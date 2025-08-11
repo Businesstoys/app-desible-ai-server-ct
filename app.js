@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }))
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://app-idreamcareer.desible.ai'
+  'https://ct-api-h0bzdsbvcbewcpae.centralus-01.azurewebsites.net'
 ]
 
 app.use(cors({
