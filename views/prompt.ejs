@@ -1,0 +1,107 @@
+<!-- views/index.ejs -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Prompt Update</title>
+  <style>
+    /* Reset default margins and paddings */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Center the content vertically and horizontally */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+
+    /* Container for the form */
+    .container {
+      background-color: #fff;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      width: 400px;
+    }
+
+    /* Heading style */
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+      text-align: center;
+    }
+
+    /* Form element styles */
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    textarea {
+      margin-bottom: 20px;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: none;
+    }
+
+    textarea {
+      height: 150px;
+    }
+
+    /* Button style */
+    button {
+      padding: 12px;
+      font-size: 16px;
+      color: #fff;
+      background-color: #28a745;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #218838;
+    }
+    .error-message {
+      color: red;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <% if (typeof werror !== 'undefined') { %>
+      <div class="error-message"><%= werror %></div>
+    <% } %>
+    <h1>Submit a Prompt</h1>
+    <form action="/update-prompt" method="POST">
+      <!-- Access Key Input -->
+      <label for="accessKey">Access Key</label>
+      <input type="text" id="accessKey" name="accessKey" placeholder="Enter Access Key" required />
+
+      <!-- Prompt Textarea -->
+      <label for="promptText">Prompt Text</label>
+      <textarea id="promptText" name="promptText" placeholder="Enter prompt text" required></textarea>
+
+      <!-- Submit Button -->
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+</body>
+</html>
