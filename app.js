@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }))
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://white-rock-01b058f10.2.azurestaticapps.net/'
+  'https://white-rock-01b058f10.2.azurestaticapps.net'
 ]
 
 app.use(cors({
