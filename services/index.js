@@ -1,7 +1,7 @@
 exports.db = require('./db')
 exports.jwt = require('./jwt')
 exports.uuid = require('./uuid')
-exports.optimus = require('./optimus')
+exports.voice = require('./voice')
 exports.cron = require('./cron')
 exports.webhook = require('./webhook')
 exports.aws = require('./aws')

@@ -2,7 +2,7 @@ const XLSX = require('xlsx')
 
 const { v4: uuidv4 } = require('uuid')
 const { Calls, Dispositions } = require('@/models')
-const { db, optimus } = require('@/services')
+const { db, voice } = require('@/services')
 const { AsyncWrapper, AppError, getDateRange, formatMobileNumber } = require('@/utils')
 const { CALL_STATUSES } = require('@/constant')
 
@@ -637,7 +637,7 @@ const hangUp = async ({ params }, res, next) => {
     return next(new AppError('Call must be ongoing to hang up', 400))
   }
 
-  await optimus.hangUpCall({ call_sid: call.callId })
+  await voice.hangUpCall({ call_sid: call.callId })
 
   call.status = 'hang-up'
   await call.save()
@@ -690,7 +690,7 @@ const summary = async ({ params }, res, next) => {
   }
   console.log('Payload for summary:', payload)
 
-  const summary = await optimus.getCallSummary(payload)
+  const summary = await voice.getCallSummary(payload)
   const extracted = summary?.data?.extracted_data || {}
 
   const existingDisposition = await db.findOne(Dispositions, { call: call._id })

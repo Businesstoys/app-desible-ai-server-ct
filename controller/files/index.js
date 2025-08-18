@@ -10,7 +10,7 @@ const getRecording = async ({ params, headers }, res, next) => {
   const range = headers?.range
 
   try {
-    const remoteUrl = `${process.env.OPTIMUS_API_BASE_URL}/fetch-recording/${file}`
+    const remoteUrl = `${process.env.VOICE_API_BASE_URL}/fetch-recording/${file}`
 
     const getExtension = (contentType) => {
       if (contentType.includes('mpeg')) return '.mp3'

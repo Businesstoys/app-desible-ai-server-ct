@@ -1,6 +1,6 @@
 const axios = require('axios')
 
-const API_BASE_URL = process.env.OPTIMUS_API_BASE_URL
+const API_BASE_URL = process.env.VOICE_API_BASE_URL
 const API_KEY = process.env.OPTIMUS_API_KEY || ''
 
 async function initiateOutboundCall ({ payload }) {

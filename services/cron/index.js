@@ -1,12 +1,12 @@
 /* eslint-disable camelcase */
 const cron = require('node-cron')
 const moment = require('moment-timezone')
-const { db, optimus } = require('..')
+const { db, voice } = require('..')
 const { Calls, CallsLogs, Statics } = require('@/models')
 const { getRecordingUrl, mapHangupCodeToCallStatus } = require('@/utils')
 const { CALL_STATUSES, MAX_CALL_ATTEMPTS } = require('@/constant')
 const { getNextBusinessRetryTime } = require('@/utils/scheduler')
-const { isAllowedCallWindow, prepareCallsForQueuing, createDisposition } = require('./helper')
+const { prepareCallsForQueuing, isAllowedCallWindow, createDisposition } = require('./helper')
 
 async function logCallEvent ({ log = 'info', content = '', callId = null }) {
   try {
@@ -56,7 +56,7 @@ async function processQueuedCalls (queuedCalls) {
       })
 
       try {
-        const response = await optimus.initiateOutboundCall({ payload })
+        const response = await voice.initiateOutboundCall({ payload })
         await logCallEvent({
           log: 'info',
           content: `Received response from initiateOutboundCall: ${JSON.stringify(response?.data || {})}`,
@@ -119,7 +119,7 @@ async function handleCompletedCall (call) {
     let transcriptionText = call.transcriptionText
 
     if (call.transcriptionId && !call.transcriptionText) {
-      const response = await optimus.getTranscription(call.transcriptionId)
+      const response = await voice.getTranscription(call.transcriptionId)
 
       await logCallEvent({
         log: 'info',
@@ -147,7 +147,7 @@ async function handleCompletedCall (call) {
         callId: call._id
       })
 
-      summary = await optimus.getCallSummary(payload)
+      summary = await voice.getCallSummary(payload)
       const extractedData = summary?.extracted_data || {}
 
       await logCallEvent({
@@ -166,7 +166,6 @@ async function handleCompletedCall (call) {
         callId: call._id
       })
     }
-    console.log('reach here')
     if (call?.attempt < MAX_CALL_ATTEMPTS && summary?.retry) {
       console.log('call schedule')
       await handleCreateRetiryCall(call, summary?.extracted_data?.callback_datetime)
@@ -186,7 +185,7 @@ async function handleCompletedCall (call) {
 async function updateCallStatus (call) {
   try {
     const { callId, status } = call
-    const callDetailsResponse = await optimus.getCallDetails(callId)
+    const callDetailsResponse = await voice.getCallDetails(callId)
 
     await logCallEvent({
       log: 'info',
@@ -197,7 +196,7 @@ async function updateCallStatus (call) {
     let newStatus = ''
 
     if (!callDetailsResponse?.call_sid) {
-      const liveStatusResponse = await optimus.getLiveStatus(callId)
+      const liveStatusResponse = await voice.getLiveStatus(callId)
       newStatus = liveStatusResponse?.call_status
 
       await logCallEvent({
@@ -311,45 +310,45 @@ async function handleCreateRetiryCall (call, callback_datetime = '') {
 }
 
 const init = () => cron.schedule('*/30 * * * * *', async () => {
-  // try {
-  //   const statics = await db.findOne(Statics, {})
-  //   if (!statics?.isQueueRunning) return
-  //   await prepareCallsForQueuing()
+  try {
+    const statics = await db.findOne(Statics, {})
+    if (!statics?.isQueueRunning) return
+    await prepareCallsForQueuing()
 
-  //   const [ongoingCalls, queuedCalls] = await Promise.all([
-  //     db.find(Calls, { status: { $in: CALL_STATUSES.ONGOING } }),
-  //     db.find(Calls, { status: { $in: CALL_STATUSES.QUEUED } }, {
-  //       sort: { priority: 1 },
-  //       populate: [
-  //         { path: 'template' },
-  //         { path: 'disposition', select: 'summary' }
-  //       ]
-  //     })
-  //   ])
+    const [ongoingCalls, queuedCalls] = await Promise.all([
+      db.find(Calls, { status: { $in: CALL_STATUSES.ONGOING } }),
+      db.find(Calls, { status: { $in: CALL_STATUSES.QUEUED } }, {
+        sort: { priority: 1 },
+        populate: [
+          { path: 'template' },
+          { path: 'disposition', select: 'summary' }
+        ]
+      })
+    ])
 
-  //   const MAX_SERVER_CAPACITY = Number(statics?.serverCapacity) || 1
+    const MAX_SERVER_CAPACITY = Number(statics?.serverCapacity) || 1
 
-  //   const remainingCapacity = MAX_SERVER_CAPACITY - (ongoingCalls?.length || 0)
+    const remainingCapacity = MAX_SERVER_CAPACITY - (ongoingCalls?.length || 0)
 
-  //   if (remainingCapacity > 0 && queuedCalls?.length > 0) {
-  //     const currentTimeIST = moment.tz('Asia/Kolkata')
-  //     const eligibleQueuedCalls = queuedCalls.filter(call =>
-  //       isAllowedCallWindow(currentTimeIST, call?.overrideSlot)
-  //     )
-  //     const callsToProcess = eligibleQueuedCalls.slice(0, remainingCapacity)
-  //     await processQueuedCalls(callsToProcess)
-  //   }
+    if (remainingCapacity > 0 && queuedCalls?.length > 0) {
+      const currentTimeIST = moment.tz('Asia/Kolkata')
+      const eligibleQueuedCalls = queuedCalls.filter(call =>
+        isAllowedCallWindow(currentTimeIST, call?.overrideSlot)
+      )
+      const callsToProcess = eligibleQueuedCalls.slice(0, remainingCapacity)
+      await processQueuedCalls(callsToProcess)
+    }
 
-  //   if (ongoingCalls.length > 0) {
-  //     await Promise.all(ongoingCalls.map(updateCallStatus))
-  //   }
-  // } catch (error) {
-  //   console.error('Error during call status check:', error)
-  //   await logCallEvent({
-  //     log: 'error',
-  //     content: `Cron execution failed: ${error.message}`
-  //   })
-  // }
+    if (ongoingCalls.length > 0) {
+      await Promise.all(ongoingCalls.map(updateCallStatus))
+    }
+  } catch (error) {
+    console.error('Error during call status check:', error)
+    await logCallEvent({
+      log: 'error',
+      content: `Cron execution failed: ${error.message}`
+    })
+  }
 })
 
 module.exports = { init }

@@ -1,4 +1,4 @@
-const { optimus } = require('@/services')
+const { voice } = require('@/services')
 const aws = require('@/services/aws')
 const { default: axios } = require('axios')
 
@@ -46,7 +46,7 @@ const callInitiate = async ({ callData }) => {
     const results = []
     for (const data of callData) {
       try {
-        const response = await optimus.initiateOutboundCall(data)
+        const response = await voice.initiateOutboundCall(data)
         results.push({ success: true, data: response })
       } catch (error) {
         results.push({ success: false, error: error.message })
