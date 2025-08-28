@@ -1,15 +1,10 @@
 const XLSX = require('xlsx')
 
-const { v4: uuidv4 } = require('uuid')
-const { Calls, Dispositions } = require('@/models')
-const { db, voice } = require('@/services')
-const { AsyncWrapper, AppError, getDateRange, formatMobileNumber } = require('@/utils')
+const { Calls } = require('@/models')
+const { db } = require('@/services')
+const { AsyncWrapper, AppError, getDateRange } = require('@/utils')
 const { CALL_STATUSES } = require('@/constant')
-
-function isValidArray (array) {
-  const requiredFields = ['to_phone', 'student_name', 'gender', 'counselor_name', 'school_name', 'location', 'class', 'uid']
-  return Array.isArray(array) && array.every(item => requiredFields.every(field => field in item && Boolean(item[field])))
-}
+const { xaddCallStatus } = require('@/services/bullmq/call/handler/helper')
 
 const formatDate = (date) => {
   const d = new Date(date)
@@ -17,51 +12,6 @@ const formatDate = (date) => {
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const yy = String(d.getFullYear()).slice(-2)
   return `${dd}-${mm}-${yy}`
-}
-
-const upload = async ({ files, user }, res, next) => {
-  const file = files?.file
-  if (!file) return next(new AppError('File not found! Please upload the file.', 400))
-
-  const workbook = XLSX.read(file.data, { type: 'buffer' })
-  const sheetName = workbook.SheetNames?.[0]
-  const worksheet = workbook.Sheets?.[sheetName]
-  const fileData = XLSX.utils.sheet_to_json(worksheet)
-
-  if (!fileData || fileData.length === 0) return next(new AppError('Data not found in uploaded file.', 400))
-  if (!isValidArray(fileData)) return next(new AppError('Missing required fields.', 400))
-
-  const calls = fileData.map(call => ({
-    user: user._id,
-    fromPhone: user.phoneNumber,
-    toPhone: formatMobileNumber(call.to_phone),
-    status: 'pending',
-    studentName: call.student_name,
-    gender: call.gender,
-    counselorName: call.counselor_name,
-    schoolName: call.school_name,
-    location: call.location,
-    class: call.class,
-    uid: call.uid,
-    leadId: uuidv4()
-  }))
-
-  await db.create(Calls, calls)
-
-  res.status(200).json({ status: 'success' })
-}
-
-const update = async ({ user, body }, res, next) => {
-  const call = await db.findOne(Calls, { _id: body?._id })
-  if (!call) return next(new AppError('Call not found', 400))
-
-  await db.findOneAndUpdate(
-    Calls,
-    { _id: call._id, user: user._id },
-    { $set: body }
-  )
-
-  res.status(200).json({ status: 'success' })
 }
 
 const remove = async ({ user, params }, res, next) => {
@@ -75,32 +25,6 @@ const remove = async ({ user, params }, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'Call deleted successfully'
-  })
-}
-
-const initiate = async ({ body, user }, res) => {
-  const { callId = [], voiceName, templateId, voiceId, agentName } = body
-
-  const updatePromises = callId.map(id =>
-    db.updateOne(
-      Calls,
-      { _id: id, user: user._id },
-      {
-        $set: {
-          status: 'queued',
-          voiceName,
-          voiceId,
-          template: templateId,
-          agentName,
-          rootCallId: id
-        }
-      }
-    )
-  )
-  await Promise.all(updatePromises)
-
-  res.status(200).json({
-    status: 'success'
   })
 }
 
@@ -608,151 +532,6 @@ const list = async ({ query, user }, res, _) => {
   })
 }
 
-const pending = async ({ user }, res) => {
-  const calls = await db.find(Calls, { user: user._id, status: 'pending' })
-  res.status(200).json({
-    status: 'success',
-    data: calls
-  })
-}
-
-const updateStatus = async ({ body, user }, res) => {
-  const { ids, status } = body
-
-  await db.updateMany(
-    Calls,
-    { _id: { $in: ids }, user: user._id, status: 'queued' },
-    { $set: { status } }
-  )
-
-  return res.status(200).json({ status: 'success' })
-}
-
-const hangUp = async ({ params }, res, next) => {
-  const { id } = params
-  const call = await db.findOne(Calls, { _id: id })
-  if (!call) return next(new AppError('Call not found', 404))
-
-  if (!CALL_STATUSES.ONGOING.includes(call.status)) {
-    return next(new AppError('Call must be ongoing to hang up', 400))
-  }
-
-  await voice.hangUpCall({ call_sid: call.callId })
-
-  call.status = 'hang-up'
-  await call.save()
-
-  return res.status(200).json({ status: 'success' })
-}
-
-const feedback = async ({ params, body }, res, next) => {
-  const { id } = params
-  const {
-    quality,
-    clarity,
-    tone,
-    overall,
-    note
-  } = body
-
-  const call = await db.findOne(Calls, { _id: id })
-  if (!call) return next(new AppError('Call not found', 404))
-
-  call.feedback = {
-    quality: Number(quality),
-    clarity: Number(clarity),
-    tone: Number(tone),
-    overall: Number(overall),
-    note: note?.trim() || ''
-  }
-
-  await call.save()
-
-  return res.status(200).json({
-    status: 'success',
-    message: 'Feedback saved successfully',
-    feedback: call.feedback
-  })
-}
-
-const summary = async ({ params }, res, next) => {
-  const { id } = params
-
-  const call = await db.findOne(Calls, { _id: id })
-  if (!call) return next(new AppError('Call not found', 404))
-
-  const payload = {
-    call_id: call.callId,
-    customer_name: call.studentName,
-    transcription_text: call.transcriptionText || '',
-    call_duration: call.duration,
-    to_phone: call.toPhone
-  }
-  console.log('Payload for summary:', payload)
-
-  const summary = await voice.getCallSummary(payload)
-  const extracted = summary?.data?.extracted_data || {}
-
-  const existingDisposition = await db.findOne(Dispositions, { call: call._id })
-
-  if (existingDisposition) {
-    await db.findOneAndUpdate(
-      Dispositions,
-      { call: call._id },
-      {
-        summary: extracted.summary,
-        remark: extracted.remark,
-        subRemark: extracted.sub_remark,
-        receiver: extracted.receiver,
-        callbackTime: extracted.callback_time,
-        classXPassStatus: extracted.class_x_pass_status,
-        classXOverallMarks: extracted.class_x_overall_marks,
-        postFailPlan: extracted.post_fail_plan,
-        classXIAdmissionStatus: extracted.class_xi_admission_status,
-        classXISchoolType1: extracted.class_xi_school_type_1,
-        classXISchoolType2: extracted.class_xi_school_type_2,
-        classXISchoolName: extracted.class_xi_school_name,
-        classXIBoard: extracted.class_xi_board,
-        classXIStreamChosen: extracted.class_xi_stream_chosen,
-        dropOutAfterXReason: extracted.drop_out_after_x_reason,
-        classXIAdmissionProof: extracted.class_xi_admission_proof
-      }
-    )
-  } else {
-    const newDisposition = await db.create(Dispositions, {
-      call: call._id,
-      summary: extracted?.summary,
-      remark: extracted?.remark,
-      subRemark: extracted.sub_remark,
-      receiver: extracted.receiver,
-      callbackTime: extracted.callback_time,
-      classXPassStatus: extracted.class_x_pass_status,
-      classXOverallMarks: extracted.class_x_overall_marks,
-      postFailPlan: extracted.post_fail_plan,
-      classXIAdmissionStatus: extracted.class_xi_admission_status,
-      classXISchoolType1: extracted.class_xi_school_type_1,
-      classXISchoolType2: extracted.class_xi_school_type_2,
-      classXISchoolName: extracted.class_xi_school_name,
-      classXIBoard: extracted.class_xi_board,
-      classXIStreamChosen: extracted.class_xi_stream_chosen,
-      dropOutAfterXReason: extracted.drop_out_after_x_reason,
-      classXIAdmissionProof: extracted.class_xi_admission_proof
-    })
-
-    if (!call.disposition) {
-      call.disposition = newDisposition._id
-    }
-
-    await call.save()
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Summary updated successfully',
-      data: summary
-    })
-  }
-}
-
 const deleteCall = async ({ params }, res, next) => {
   const { id } = params
 
@@ -771,18 +550,46 @@ const deleteCall = async ({ params }, res, next) => {
   })
 }
 
-module.exports = AsyncWrapper({
-  upload,
-  pending,
-  initiate,
+const updateStatus = async (req, res) => {
+  try {
+    const { CallStatus, CallSid } = req.body
+    const { id } = req.query
+    console.log('updateStatus called with:', { id, CallStatus, CallSid })
+
+    if (!CallStatus || !CallSid) {
+      return res.status(400).json({ error: 'callStatus and callSid are required' })
+    }
+
+    const call = await db.findOneAndUpdate(
+      Calls,
+      { _id: id },
+      { $set: { status: CallStatus } },
+      { new: true }
+    )
+
+    if (!call) {
+      return res.status(404).json({ error: 'Call not found' })
+    }
+
+    const { status, _id } = call
+    await xaddCallStatus(_id, status, { status, _id })
+
+    return res.json({ ok: true })
+  } catch (err) {
+    console.error('updateStatus error:', err)
+    return res.status(500).json({ error: err.message || 'Internal Server Error' })
+  }
+}
+
+const asyncWrapped = AsyncWrapper({
   exportDetails,
-  update,
   remove,
   kpi,
   list,
-  updateStatus,
-  hangUp,
-  feedback,
-  summary,
   deleteCall
 })
+
+module.exports = {
+  ...asyncWrapped,
+  updateStatus
+}

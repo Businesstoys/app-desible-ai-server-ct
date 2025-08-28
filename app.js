@@ -12,7 +12,6 @@ const app = express()
 
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'ejs')
-// app.set('trust proxy', 1)
 
 app.use(cookieParser())
 
@@ -45,6 +44,21 @@ const limiter = rateLimit({
 })
 
 app.use(limiter)
+
+app.post(
+  '/webhooks/shipment',
+  // require('@/middleware/auth').webhookProtect,
+  require('./controller/shipments').feed
+)
+
+app.post(
+  '/webhooks/twilio',
+  // require('@/middleware/auth').twilioWebhookProtect(),
+  require('./controller/call').updateStatus
+)
+
+const { bullboard } = require('@/services')
+app.use('/admin/queues', bullboard.getRouter())
 
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'The server is up and running!' })

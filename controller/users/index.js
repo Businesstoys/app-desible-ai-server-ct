@@ -12,6 +12,7 @@ const login = async ({ body }, res, next) => {
   if (!decoded) {
     return next(new AppError('Invalid Microsoft token', 401))
   }
+
   const email = decoded?.email
   const user = await db.findOne(Users, { email })
   if (!user) return next(new AppError('User not found', 401))

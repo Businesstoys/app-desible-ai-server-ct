@@ -4,22 +4,14 @@ const API_BASE_URL = process.env.VOICE_API_BASE_URL
 const API_KEY = process.env.OPTIMUS_API_KEY || ''
 
 async function initiateOutboundCall ({ payload }) {
-  const endpoint = 'start_outbound_call_idream_hindi'
+  const endpoint = 'start_outbound_call'
 
   const url = `${API_BASE_URL}/${endpoint}`
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-api-key': API_KEY
-  }
-
   try {
-    const response = await axios.post(url, payload, { headers })
+    const response = await axios.post(url, payload)
     return response
   } catch (error) {
-    console.log({ error })
-    console.error('API Call Failed:', error.response ? error.response.data : error.message)
-    return error?.response
+    throw new Error(`Initiate API failed: ${error?.message}`)
   }
 }
 

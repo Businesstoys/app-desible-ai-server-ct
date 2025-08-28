@@ -6,5 +6,6 @@ module.exports = {
   organizations: require('./organization'),
   templates: require('./templates'),
   statics: require('./static'),
-  charts: require('./charts')
+  charts: require('./charts'),
+  shipments: require('./shipments')
 }

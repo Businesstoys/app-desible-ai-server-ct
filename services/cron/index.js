@@ -226,7 +226,7 @@ async function updateCallStatus (call) {
       await handleCompletedCall(call)
     }
 
-    if (CALL_STATUSES.FAILD_CALL.includes(call.status)) {
+    if (CALL_STATUSES.FAILED_CALL.includes(call.status)) {
       if (call.attempt < MAX_CALL_ATTEMPTS) {
         await handleCreateRetiryCall(call)
       } else {
@@ -311,6 +311,7 @@ async function handleCreateRetiryCall (call, callback_datetime = '') {
 
 const init = () => cron.schedule('*/30 * * * * *', async () => {
   try {
+    return true
     const statics = await db.findOne(Statics, {})
     if (!statics?.isQueueRunning) return
     await prepareCallsForQueuing()

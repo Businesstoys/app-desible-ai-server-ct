@@ -5,6 +5,5 @@ exports.voice = require('./voice')
 exports.cron = require('./cron')
 exports.webhook = require('./webhook')
 exports.aws = require('./aws')
-exports.email = require('./email')
-
-// exports.plivo = require('./plivo')
+exports.bullmq = require('./bullmq')
+exports.bullboard = require('./bullboard')

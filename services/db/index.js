@@ -87,19 +87,40 @@ const findOne = (Model, query, options = {}) => new Promise((resolve, reject) =>
     .catch(error => reject(error))
 })
 
-const findOneAndUpdate = (Model, query, data, options = {}) => new Promise((resolve, reject) => {
-  const { populate = false } = options
-  let queryBuilder = Model.findOneAndUpdate(query, data, { new: true })
+const findOneAndUpdate = (Model, query, data, options = {}) =>
+  new Promise((resolve, reject) => {
+    const {
+      populate = false,
+      create = false,
+      select = false,
+      lean = false
+    } = options
+    let queryBuilder = Model.findOneAndUpdate(query, data, { new: true })
 
-  if (populate) {
-    queryBuilder = queryBuilder.populate(populate)
-  }
+    if (populate) {
+      queryBuilder = queryBuilder.populate(populate)
+    }
 
-  queryBuilder
-    .exec()
-    .then(response => resolve(response))
-    .catch(error => reject(error))
-})
+    if (select) {
+      queryBuilder = queryBuilder.select(select)
+    }
+
+    if (create) {
+      queryBuilder = queryBuilder.setOptions({
+        upsert: true,
+        setDefaultsOnInsert: true
+      })
+    }
+
+    if (lean) {
+      queryBuilder = queryBuilder.lean()
+    }
+
+    queryBuilder
+      .exec()
+      .then((response) => resolve(response))
+      .catch((error) => reject(error))
+  })
 
 const aggregate = (Model, query) => new Promise((resolve, reject) => {
   Model.aggregate(query)

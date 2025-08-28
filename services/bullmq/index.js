@@ -1,4 +1,4 @@
-exports.callJobs = {
+exports.call = {
   queue: require('./call/queue'),
   producer: require('./call/producer'),
   worker: require('./call/worker')

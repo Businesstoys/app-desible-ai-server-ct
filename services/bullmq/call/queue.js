@@ -1,17 +1,16 @@
 const { Queue } = require('bullmq')
-// const { redisConnection } = require('@/utils')
 
 const { CALL_JOBS } = require('../names')
 
 const queue = new Queue(CALL_JOBS, {
-  ...require('../config')
+  ...require('@/services/config')
 })
 
-queue.on('completed', (job, result) => {
+queue.on('completed', (_, result) => {
   console.log(`Job completed with result ${result}`)
 })
 
-queue.on('failed', (job, err) => {
+queue.on('failed', (_, err) => {
   console.error(`Job failed: ${err.message}`)
 })
 
