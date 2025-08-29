@@ -3,5 +3,6 @@ module.exports = {
   templates: require('./templates'),
   files: require('./files'),
   users: require('./users'),
-  charts: require('./charts')
+  charts: require('./charts'),
+  statics: require('./statics')
 }
