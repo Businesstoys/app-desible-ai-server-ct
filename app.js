@@ -48,7 +48,7 @@ app.use(limiter)
 app.post(
   '/webhooks/shipment',
   // require('@/middleware/auth').webhookProtect,
-  require('./controller/shipments').feed
+  require('./controller/shipment').feed
 )
 
 app.post(
@@ -57,7 +57,7 @@ app.post(
   require('./controller/call').updateStatus
 )
 
-const { bullboard } = require('@/services')
+const { bullboard } = require('@/service')
 app.use('/admin/queues', bullboard.getRouter())
 
 app.get('/', (req, res) => {
@@ -71,7 +71,6 @@ app.use('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl}`, 404))
 })
 
-// GLOBAL ERROR HANDLER
 app.use(require('./controller').error)
 
 module.exports = app

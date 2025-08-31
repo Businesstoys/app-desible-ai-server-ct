@@ -1,10 +1,10 @@
 const XLSX = require('xlsx')
 
 const { Calls } = require('@/models')
-const { db } = require('@/services')
+const { db } = require('@/service')
 const { AsyncWrapper, AppError, getDateRange } = require('@/utils')
 const { CALL_STATUSES } = require('@/constant')
-const { xaddCallStatus } = require('@/services/bullmq/call/handler/helper')
+const { xaddCallStatus } = require('@/service/bullmq/call/handler/helper')
 
 const formatDate = (date) => {
   const d = new Date(date)
@@ -340,7 +340,7 @@ const list = async ({ query, user }, res, _) => {
   const limit = Math.max(1, Math.min(100, parseInt(perPage, 10)))
   const skip = (pageNum - 1) * limit
 
-  const filter = { user: user._id }
+  const filter = { }
 
   if (search) {
     const regex = { $regex: search, $options: 'i' }
@@ -448,7 +448,6 @@ const list = async ({ query, user }, res, _) => {
     }
   ]
 
-  // ✅ Pipeline to calculate correct count
   const countPipeline = [
     { $match: filter },
     {
@@ -488,6 +487,8 @@ const list = async ({ query, user }, res, _) => {
   const total = countResult[0]?.total || 0
   const pageCount = Math.ceil(total / limit)
 
+  console.log({ data })
+
   const mapData = data.map(doc => {
     const voice = doc.template?.voices?.find(
       v => v._id.toString() === (doc.voiceId || '').toString()
@@ -509,12 +510,11 @@ const list = async ({ query, user }, res, _) => {
       callStatus: doc.status,
       scheduledAt: doc.scheduledAt,
       callAttempt: doc.attempt,
-      schoolName: doc.schoolName,
-      location: doc.location,
+      shipmentNumber: doc.shipmentNumber,
+      carrierName: doc.carrierName,
+      probillNumber: doc.probillNumber,
       callHistory: doc.callHistory,
       remark: doc?.disposition?.remark,
-      emailSent: doc?.disposition?.emailSent,
-      eventCreated: doc?.disposition?.eventCreated,
       summary: doc?.disposition?.summary,
       subRemark: doc?.disposition?.subRemark
     }

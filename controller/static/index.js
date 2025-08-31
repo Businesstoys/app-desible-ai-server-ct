@@ -1,12 +1,10 @@
 const { Statics } = require('@/models')
-const { db } = require('@/services')
+const { db } = require('@/service')
 const { AsyncWrapper, AppError } = require('@/utils')
 
 const stopQueue = async (_, res) => {
-  let statics = await db.findOne(Statics, {})
-  if (!statics) {
-    statics = await db.create(Statics, {})
-  }
+  const statics = await db.findOne(Statics, {})
+
   statics.isQueueRunning = false
   await statics.save()
 
@@ -17,11 +15,9 @@ const stopQueue = async (_, res) => {
   })
 }
 
-const startQueue = async (_, res, next) => {
-  let statics = await db.findOne(Statics, {})
-  if (!statics) {
-    statics = await Statics.create(Statics, {})
-  }
+const startQueue = async (_, res) => {
+  const statics = await db.findOne(Statics, {})
+
   statics.isQueueRunning = true
   await statics.save()
 
@@ -32,11 +28,8 @@ const startQueue = async (_, res, next) => {
   })
 }
 
-const getQueueStatus = async (req, res, next) => {
-  let statics = await db.findOne(Statics, {})
-  if (!statics) {
-    statics = await db.create(Statics, {})
-  }
+const getQueueStatus = async (_, res) => {
+  const statics = await db.findOne(Statics, {})
 
   res.status(200).json({
     status: 'success',
@@ -44,12 +37,8 @@ const getQueueStatus = async (req, res, next) => {
   })
 }
 
-const availableStatics = async (req, res, next) => {
-  let statics = await db.findOne(Statics, {})
-
-  if (!statics) {
-    statics = await db.create(Statics, {})
-  }
+const availableStatics = async (_, res, next) => {
+  const statics = await db.findOne(Statics, {})
 
   if (statics) {
     return res.status(200).json({ status: 'success', data: statics || [] })
@@ -58,32 +47,18 @@ const availableStatics = async (req, res, next) => {
   }
 }
 
-const config = async (req, res, next) => {
+const config = async (req, res) => {
   const { prompt, voiceId, phoneNumber } = req.body
-  if (!voiceId || !phoneNumber) {
-    return res.status().json({ status: false, message: 'Voice Id and Phone Number is required' })
-  }
 
-  let statics = await db.findOne(Statics, {})
-
-  if (!statics) {
-    statics = db.create(Statics, {})
-  }
+  const statics = await db.findOne(Statics, {})
 
   statics.prompt = prompt || statics.prompt
   statics.selectedVoice = voiceId
   statics.selectedNumber = phoneNumber
+
   await statics.save()
 
-  res.status(201).json({
-    status: 'success',
-    data: {
-      selectedVoice: statics.selectedVoice,
-      selectedNumber: statics.selectedNumber,
-      prompt: statics.prompt
-    },
-    message: 'Configuration updated successfully'
-  })
+  res.status(201).json({ status: 'success' })
 }
 
 module.exports = AsyncWrapper({

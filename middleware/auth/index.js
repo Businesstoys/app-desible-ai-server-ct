@@ -1,7 +1,7 @@
 const twilio = require('twilio')
 
 const { Users } = require('@/models')
-const { jwt, db } = require('@/services')
+const { jwt, db } = require('@/service')
 const { AppError, AsyncWrapper } = require('@/utils')
 
 const protect = async (req, _, next) => {

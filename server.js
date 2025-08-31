@@ -10,7 +10,7 @@ dotenv.config({
   path: './.env'
 })
 
-const { db, cron } = require('./services')
+const { db, cron } = require('./service')
 
 db.init()
   .then(() => {

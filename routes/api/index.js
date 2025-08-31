@@ -1,9 +1,9 @@
 const router = require('express').Router()
 
-router.use('/user', require('./users'))
-router.use('/call', require('./calls'))
-router.use('/static', require('./statics'))
-router.use('/chart', require('./charts'))
-router.use('/', require('./files'))
+router.use('/user', require('./user'))
+router.use('/call', require('./call'))
+router.use('/static', require('./static'))
+router.use('/chart', require('./chart'))
+router.use('/', require('./file'))
 
 module.exports = router
