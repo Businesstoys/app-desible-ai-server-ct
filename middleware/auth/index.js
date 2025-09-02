@@ -7,31 +7,28 @@ const { AppError, AsyncWrapper } = require('@/utils')
 const protect = async (req, _, next) => {
   const key = process.env.USER_KEY_COOKIE
 
-  const token = req.header.authorization || req.cookies[key]
-  console.log('Authorization Header:', req.header.authorization) // Debugging line to check the header
-  console.log('Token:', token) // Debugging line to check the token value
+  const authHeader = req.get('authorization') // ✅
+  const tokenFromHeader = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : authHeader
+
+  const token = tokenFromHeader || req.cookies?.[key] // requires cookie-parser
+  console.log('Authorization Header:', authHeader)
+  console.log('Token:', token)
 
   if (!token) return next(new AppError('Unauthorized', 401))
 
-  console.log('Token found, proceeding to verify...') // Debugging line to confirm token presence
-
-  let decoded
   try {
-    decoded = await jwt.verifyToken(token)
-    console.log('Token decoded:', decoded) // Debugging line to check decoded token
-  } catch (error) {
-    console.error('Token verification error:', error) // Debugging line to log verification errors
-    return next(new AppError('Invalid token', 401))
+    const decoded = await jwt.verifyToken(token)
+    const user = await db.findOne(Users, { _id: decoded.id })
+    if (!user) return next(new AppError('Unauthorized', 401))
+    await user.save()
+    req.user = user
+    next()
+  } catch (err) {
+    console.error('Token verification error:', err)
+    next(new AppError('Invalid token', 401))
   }
-
-  const user = await db.findOne(Users, { _id: decoded.id })
-  console.log('User found:', user) // Debugging line to check user retrieval
-  if (!user) return next(new AppError('Unauthorized', 401))
-
-  await user.save()
-  req.user = user
-
-  next()
 }
 
 const webhookProtect = (req, _, next) => {
