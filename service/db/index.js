@@ -69,7 +69,7 @@ const find = (Model, query, options = {}) => new Promise((resolve, reject) => {
 })
 
 const findOne = (Model, query, options = {}) => new Promise((resolve, reject) => {
-  const { populate = false, select = false } = options
+  const { populate = false, select = false, lean = false } = options
 
   let queryBuilder = Model.findOne(query)
 
@@ -79,6 +79,10 @@ const findOne = (Model, query, options = {}) => new Promise((resolve, reject) =>
 
   if (select) {
     queryBuilder = queryBuilder.select(select)
+  }
+
+  if (lean) {
+    queryBuilder = queryBuilder.lean()
   }
 
   queryBuilder

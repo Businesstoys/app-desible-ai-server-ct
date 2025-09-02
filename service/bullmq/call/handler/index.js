@@ -9,20 +9,15 @@ const initiate = async ({ _id }) => {
     if (isTerminal(call?.status)) return
 
     const payload = {
-      from_phone: '+19705125189',
-      to_phone: '+919448795320',
-      voice_agent: 'en-US-LunaNeural',
+      from_phone: call.fromPhone,
+      to_phone: call.toPhone,
+      voice_agent: call.voice,
       dispatcher_name: 'Mike Johnson',
-      carrier_name: 'ABC Transport',
-      origin_city: 'Atlanta',
-      destination_city: 'Miami',
-      pickup_date: '30/08/2025',
-      dot_number: '12378',
-      mc_number: '4562',
-      company_phone: '9447865310',
-      load_id: '12A',
-      email: 'test@gmail.com',
-      booking_date: '28/08/2025'
+      carrier_name: call.carrierName,
+      origin_city: call.originCity,
+      destination_city: call.destinationCity,
+      pickup_date: call.pickupDate,
+      delivery_date: call.bookingDate
     }
 
     const response = await voice.initiateOutboundCall({ payload })
