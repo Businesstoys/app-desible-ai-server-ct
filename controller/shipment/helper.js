@@ -1,5 +1,5 @@
 const { CALL_STATUSES } = require('@/constant')
-const { Calls } = require('@/models')
+const { Calls, Statics } = require('@/models')
 const { db } = require('@/service')
 const { addJobToQueue } = require('@/service/bullmq/call/producer')
 const { normalizePhone } = require('@/utils')
@@ -66,7 +66,9 @@ const mapShipmentPayload = (payload) => ({
     dotNumber: c.CarrierId,
     phone: c.Phone || '',
     email: c.Email || '',
-    probillNumber: c.ProbillNumber || ''
+    probillNumber: c.ProbillNumber || '',
+    tierOverride: c.TierOverride,
+    tier: c.Tier
   })),
 
   referenceNumbers: (payload.ReferenceNumbers || []).map(r => ({
@@ -94,19 +96,21 @@ const mapShipmentPayload = (payload) => ({
   lastModifiedTimeUtc: payload.LastModifiedTimeUtc ? new Date(payload.LastModifiedTimeUtc) : undefined
 })
 
-async function createCallsForShipment (shipment, carriers, user) {
+async function createCallsForShipment (shipment, carriers) {
   for (const c of carriers) {
     const toPhone = normalizePhone(c.phone)
     if (!toPhone) continue
 
-    const filter = { status: CALL_STATUSES.QUEUED.QUEUED, toPhone }
-    const exists = await db.findOne(Calls, filter)
+    // const filter = { status: CALL_STATUSES.QUEUED.QUEUED, toPhone }
+    // const exists = await db.findOne(Calls, filter)
     // if (exists) continue
 
+    const statics = db.findOne(Statics, {}, { select: 'selectedNumber selectedVoice' })
+
     const call = await db.create(Calls, {
-      user: user?._id,
       toPhone,
-      fromPhone: '+19705125189',
+      fromPhone: statics.selectedNumber,
+      voice: statics.selectedVoice,
       status: CALL_STATUSES.QUEUED.QUEUED,
       carrierName: c.name,
       dotNumber: c.dotNumber,
@@ -114,8 +118,6 @@ async function createCallsForShipment (shipment, carriers, user) {
       shipmentNumber: shipment.number,
       probillNumber: c.probillNumber
     })
-
-    console.log(`Created call ${call._id} for shipment ${shipment.number} to ${toPhone}`)
 
     await addJobToQueue({
       jobId: `call:${call._id}`,

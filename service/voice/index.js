@@ -19,8 +19,7 @@ async function getTranscription (transcriptionId) {
   const url = `${API_BASE_URL}/fetch_transcription/${transcriptionId}`
 
   const headers = {
-    'Content-Type': 'text/plain',
-    'x-api-key': API_KEY
+    'Content-Type': 'text/plain'
   }
 
   try {

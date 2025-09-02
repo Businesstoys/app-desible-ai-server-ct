@@ -1,4 +1,3 @@
-// services/bullmq/worker.js
 const { Worker } = require('bullmq')
 const { CALL_JOBS } = require('../names')
 const handler = require('./handler')
@@ -6,7 +5,6 @@ const handler = require('./handler')
 const worker = new Worker(
   CALL_JOBS,
   async (job) => {
-    console.log(`Processing job ${job.id} with data:`, job.data)
     await handler.initiate(job.data)
     await handler.waitUntilTerminal(job.data)
   },

@@ -2,19 +2,11 @@
 const cron = require('node-cron')
 const moment = require('moment-timezone')
 const { db, voice } = require('..')
-const { Calls, CallsLogs, Statics } = require('@/models')
+const { Calls, Statics } = require('@/models')
 const { getRecordingUrl, mapHangupCodeToCallStatus } = require('@/utils')
 const { CALL_STATUSES, MAX_CALL_ATTEMPTS } = require('@/constant')
 const { getNextBusinessRetryTime } = require('@/utils/scheduler')
 const { prepareCallsForQueuing, isAllowedCallWindow, createDisposition } = require('./helper')
-
-async function logCallEvent ({ log = 'info', content = '', callId = null }) {
-  try {
-    await db.create(CallsLogs, { log, content, callId })
-  } catch (error) {
-    console.error('Failed to create call log:', error)
-  }
-}
 
 async function processQueuedCalls (queuedCalls) {
   return Promise.all(

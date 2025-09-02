@@ -10,12 +10,14 @@ const configs = {
   prod: {
     connection: {
       host: process.env.REDIS_CLOUD_HOST,
-      port: parseInt(process.env.REDIS_CLOUD_PORT, 10),
+      port: process.env.REDIS_CLOUD_PORT,
       password: process.env.REDIS_CLOUD_ACCESS_KEY,
-      tls: {}
+      tls: true
     }
   }
 }
+
+console.log(process.env.REDIS_CLOUD_PORT)
 
 const base = {
   retryStrategy: (times) => {

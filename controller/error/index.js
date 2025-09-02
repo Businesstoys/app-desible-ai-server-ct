@@ -26,7 +26,6 @@ const handleJWTExpiredError = () =>
   new AppError('Your token has expired! Please log in again.', 401)
 
 const sendErrorDev = (err, req, res) => {
-  // A) API
   if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/recording') || req.originalUrl.startsWith('/transcription')) {
     console.log({ err })
     if (err?.Code === 'NoSuchKey') {

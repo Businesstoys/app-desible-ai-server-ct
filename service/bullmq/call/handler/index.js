@@ -4,7 +4,6 @@ const { waitForTerminalViaStream, isTerminal } = require('./helper')
 
 const initiate = async ({ _id }) => {
   try {
-    console.log(`Initiating call ${_id}...`)
     const call = await db.findOne(Calls, { _id })
     if (!call) throw new Error(`call not found: ${_id}`)
     if (isTerminal(call?.status)) return
@@ -26,28 +25,27 @@ const initiate = async ({ _id }) => {
       booking_date: '28/08/2025'
     }
 
-    // const response = await voice.initiateOutboundCall({ payload })
+    const response = await voice.initiateOutboundCall({ payload })
 
-    // if (response?.data?.call_sid) {
-    //   Object.assign(call, {
-    //     status: 'initiate',
-    //     callId: response?.data?.call_sid || '',
-    //     transcriptionId: response?.data?.transcription_id || '',
-    //     initiatedAt: new Date()
-    //   })
-    // } else {
-    //   call.status = 'failed'
-    //   call.initiatedAt = new Date()
-    // }
-
-    // await call.save()
+    if (response?.data?.call_sid) {
+      Object.assign(call, {
+        status: 'initiate',
+        callId: response?.data?.call_sid || '',
+        transcriptionId: response?.data?.transcription_id || '',
+        initiatedAt: new Date()
+      })
+    } else {
+      call.status = 'failed'
+      call.initiatedAt = new Date()
+    }
+    await call.save()
   } catch (err) {
     await db.updateOne(
       Calls,
-      { _id: callId },
+      { _id },
       { $set: { status: 'failed', initiatedAt: new Date() } }
     )
-    console.error(`initiate error for call ${callId}:`, err.message)
+    console.error(`initiate error for call ${_id}:`, err.message)
     throw err
   }
 }

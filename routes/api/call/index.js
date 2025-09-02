@@ -14,9 +14,9 @@ router.use(auth.protect)
 //   validator.validate(callValidations.deleteCall),
 //   calls.remove)
 
-// router.get('/kpi',
-//   validator.validate(callValidations.kpi),
-//   calls.kpi)
+router.get('/kpi',
+  validator.validate(callValidations.kpi),
+  call.kpi)
 
 router.get('/list',
   validator.validate(callValidations.callList),

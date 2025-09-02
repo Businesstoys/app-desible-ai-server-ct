@@ -5,7 +5,7 @@ const ObjectId = Schema.Types.ObjectId
 const callSchema = new Schema(
   {
     disposition: { type: ObjectId, ref: 'dispositions' },
-    voiceId: { type: ObjectId },
+    voice: { type: String },
 
     shipmentId: { type: ObjectId, ref: 'shipments' },
     shipmentNumber: { type: String },

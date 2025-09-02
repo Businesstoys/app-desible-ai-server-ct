@@ -67,7 +67,9 @@ const shipmentSchema = new Schema(
         dotNumber: { type: String }, // optional mirror of carrierId if it’s DOT
         phone: { type: String }, // Phone
         email: { type: String }, // Email
-        probillNumber: { type: String } // ProbillNumber
+        probillNumber: { type: String }, // ProbillNumber
+        tierOverride: { type: String },
+        tier: { type: String }
       }
     ],
 

@@ -1,67 +1,64 @@
-const { voice } = require('@/services')
-const aws = require('@/services/aws')
-const { default: axios } = require('axios')
+const { Dispositions } = require('@/models')
+const { db, voice } = require('@/service')
+const { getRecordingUrl } = require('@/utils')
 
-const uploadToAWS = async ({ file, callId }) => {
+async function createDisposition (callId, summary) {
+  return db.create(Dispositions, {
+    call: callId,
+    summary: summary?.summary,
+    remark: summary?.remark,
+    subRemark: summary?.sub_remark,
+    receiver: summary?.receiver
+  })
+}
+
+async function getCallSummaryForCall (call, transcriptionText) {
+  const payload = {
+    call_id: call.callId,
+    transcription_text: transcriptionText,
+    call_duration: call.duration,
+    to_phone: call.toPhone
+  }
+
   try {
-    const awsResponse = await aws.s3.uploadToS3({
-      Bucket: process.env.BUCKET_NAME_OPTIMUS,
-      file: file.data,
-      Key: `kolorBlue/${callId}/${file?.name}`,
-      ContentType: file.mimetype
-    })
-
-    return awsResponse
-  } catch (error) {
-    throw new Error(`Failed to upload recording: ${error.message}`)
+    return await voice.getCallSummary(payload)
+  } catch (err) {
+    return { extracted_data: null }
   }
 }
 
-const fetchAndUploadRecording = async ({ twilioRecordingUrl, callId }) => {
+const handleCompletedCall = async (call) => {
   try {
-    const response = await axios({
-      url: twilioRecordingUrl,
-      method: 'GET',
-      responseType: 'stream'
-    })
+    call.recordingUrl = getRecordingUrl(call.callId)
 
-    const fileExtension = twilioRecordingUrl.split('.').pop()
+    let transcriptionText = call.transcriptionText || ''
 
-    const file = {
-      data: response.data,
-      name: `${callId}.${fileExtension}`,
-      mimetype: response.headers['content-type']
-    }
-
-    const awsResponse = await uploadToAWS({ callId, file })
-
-    return awsResponse
-  } catch (error) {
-    throw new Error(`Failed to Fetch recording: ${error.message}`)
-  }
-}
-
-const callInitiate = async ({ callData }) => {
-  try {
-    const results = []
-    for (const data of callData) {
+    if (call.transcriptionId) {
       try {
-        const response = await voice.initiateOutboundCall(data)
-        results.push({ success: true, data: response })
-      } catch (error) {
-        results.push({ success: false, error: error.message })
-        console.error(`Failed to initiate call for ${JSON.stringify(data)}: ${error.message}`)
+        const response = await voice.getTranscription(call.transcriptionId)
+        transcriptionText = response?.data ?? ''
+        call.transcriptionText = transcriptionText
+      } catch (err) {
+        transcriptionText = ''
       }
     }
 
-    return results
+    if (transcriptionText) {
+      const summary = await getCallSummaryForCall(call, transcriptionText)
+      const extractedData = summary?.extracted_data || {}
+
+      const disposition = await createDisposition(call._id, extractedData)
+      call.disposition = disposition._id
+    }
+    await call.save()
   } catch (error) {
-    throw new Error(`Failed to process callData: ${error.message}`)
+    // Silent catch to mirror original behavior.
+    // Add logger here if needed.
   }
 }
 
 module.exports = {
-  uploadToAWS,
-  fetchAndUploadRecording,
-  callInitiate
+  handleCompletedCall,
+  getCallSummaryForCall,
+  createDisposition
 }

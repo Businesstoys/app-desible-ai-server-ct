@@ -1,6 +1,6 @@
 module.exports = {
   Calls: require('./calls'),
-  CallsLogs: require('./calls/logs'),
+  CallLogs: require('./calls/logs'),
   Templates: require('./templates'),
   Users: require('./users'),
   Statics: require('./statics'),

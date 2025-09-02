@@ -6,8 +6,6 @@ const dispositionSchema = new mongoose.Schema({
   summary: { type: String },
   remark: { type: String },
   subRemark: { type: String },
-  emailSent: { type: Boolean, default: false },
-  eventCreated: { type: Boolean, default: false },
   receiver: { type: String }
 }, { timestamps: true })
 

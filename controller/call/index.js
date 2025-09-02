@@ -5,6 +5,7 @@ const { db } = require('@/service')
 const { AsyncWrapper, AppError, getDateRange } = require('@/utils')
 const { CALL_STATUSES } = require('@/constant')
 const { xaddCallStatus } = require('@/service/bullmq/call/handler/helper')
+const { handleCompletedCall } = require('./helper')
 
 const formatDate = (date) => {
   const d = new Date(date)
@@ -58,29 +59,6 @@ const exportDetails = async (req, res, next) => {
     'Lead Id': item?.leadId || 'N/A',
     'Student Name': item?.studentName || 'N/A',
     'Primary Mobile Number': item?.toPhone || 'N/A',
-    reciever: item?.receiver || 'N/A',
-    Gender: item?.gender || 'N/A',
-    Class: item?.class || 'N/A',
-    'School Name': item?.schoolName || 'N/A',
-    'Counselor Name': item?.counselorName || 'N/A',
-    Location: item?.location || 'N/A',
-    UID: item?.uid || 'N/A',
-    'Mobile Number': item?.toPhone || 'N/A',
-    Remarks: item?.disposition?.summary || 'N/A',
-    Disposition: item?.disposition?.remark || 'N/A',
-    'Sub Disposition': item?.disposition?.subRemark || 'N/A',
-    'Call Back Date Time': item?.disposition?.callbackDateTime || 'N/A',
-    'Class X Pass Status': item?.disposition?.classXPassStatus || 'N/A',
-    'Class X Overall Marks': item?.disposition?.classXOverallMarks || 'N/A',
-    'Post Fail Plan': item?.disposition?.postFailPlan || 'N/A',
-    'Class XI Admission Status': item?.disposition?.classXIAdmissionStatus || 'N/A',
-    'Class XI School Type 1': item?.disposition?.classXISchoolType1 || 'N/A',
-    'Class XI School Type 2': item?.disposition?.classXISchoolType2 || 'N/A',
-    'Class XI School Name': item?.disposition?.classXISchoolName || 'N/A',
-    'Class XI Board': item?.disposition?.classXIBoard || 'N/A',
-    'Class XI Stream Chosen': item?.disposition?.classXIStreamChosen || 'N/A',
-    'Drop Out After X Reason': item?.disposition?.dropOutAfterXReason || 'N/A',
-    'Class XI Admission Proof': item?.disposition?.classXIAdmissionProof || 'N/A',
     'Created On': new Date(item.initiatedAt ?? item.createdOn).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
   }))
 
@@ -101,10 +79,10 @@ const exportDetails = async (req, res, next) => {
   res.send(buffer)
 }
 
-const kpi = async ({ user, query }, res) => {
+const kpi = async ({ query }, res) => {
   const { from, to } = query
 
-  const currentMatch = { user: user._id }
+  const currentMatch = {}
 
   if (from && to) {
     const { start, end } = getDateRange(from, to)
@@ -478,7 +456,6 @@ const list = async ({ query, user }, res, _) => {
     { $count: 'total' }
   ]
 
-  // Execute aggregations
   const [data, countResult] = await Promise.all([
     db.aggregate(Calls, pipeline),
     db.aggregate(Calls, countPipeline)
@@ -486,8 +463,6 @@ const list = async ({ query, user }, res, _) => {
 
   const total = countResult[0]?.total || 0
   const pageCount = Math.ceil(total / limit)
-
-  console.log({ data })
 
   const mapData = data.map(doc => {
     const voice = doc.template?.voices?.find(
@@ -554,7 +529,6 @@ const updateStatus = async (req, res) => {
   try {
     const { CallStatus, CallSid } = req.body
     const { id } = req.query
-    console.log('updateStatus called with:', { id, CallStatus, CallSid })
 
     if (!CallStatus || !CallSid) {
       return res.status(400).json({ error: 'callStatus and callSid are required' })
@@ -573,6 +547,10 @@ const updateStatus = async (req, res) => {
 
     const { status, _id } = call
     await xaddCallStatus(_id, status, { status, _id })
+
+    if (CALL_STATUSES.COMPLETED.COMPLETED === CallStatus) {
+      await handleCompletedCall(call)
+    }
 
     return res.json({ ok: true })
   } catch (err) {
