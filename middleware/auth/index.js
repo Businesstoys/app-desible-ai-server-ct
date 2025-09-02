@@ -12,7 +12,7 @@ const protect = async (req, _, next) => {
     ? authHeader.slice(7)
     : authHeader
 
-  const token = tokenFromHeader || req.cookies?.[key] // requires cookie-parser
+  const token = tokenFromHeader || req.cookies?.[key]
   console.log('Authorization Header:', authHeader)
   console.log('Token:', token)
 
