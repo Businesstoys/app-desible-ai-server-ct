@@ -11,6 +11,7 @@ async function initiateOutboundCall ({ payload }) {
     const response = await axios.post(url, payload)
     return response
   } catch (error) {
+    console.error(`Initiate API failed: ${error}`)
     throw new Error(`Initiate API failed: ${error?.message}`)
   }
 }

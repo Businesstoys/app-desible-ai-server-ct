@@ -106,7 +106,7 @@ async function createCallsForShipment (shipment, carriers) {
     // const exists = await db.findOne(Calls, filter)
     // if (exists) continue
 
-    const statics = db.findOne(Statics, {}, { select: 'selectedNumber selectedVoice', lean: true })
+    const statics = await db.findOne(Statics, {}, { select: 'selectedNumber selectedVoice', lean: true })
 
     const call = await db.create(Calls, {
       toPhone,

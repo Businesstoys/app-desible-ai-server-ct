@@ -1,5 +1,3 @@
-const env = process.env.NODE_ENV || 'dev'
-
 const configs = {
   dev: {
     connection: {
@@ -17,9 +15,7 @@ const configs = {
   }
 }
 
-console.log(process.env.REDIS_CLOUD_PORT)
-
-const base = {
+const baseConfig = {
   retryStrategy: (times) => {
     console.log(`Redis retry (attempt ${times}), waiting 1500ms`)
     return 1500
@@ -27,5 +23,6 @@ const base = {
   pingInterval: 1000
 }
 
-const config = { ...base, ...configs[env] }
-module.exports = { config }
+const config = configs[process.env.NODE_ENV || 'dev']
+
+module.exports = { ...baseConfig, ...config }

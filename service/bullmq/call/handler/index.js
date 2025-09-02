@@ -17,10 +17,14 @@ const initiate = async ({ _id }) => {
       origin_city: call.originCity,
       destination_city: call.destinationCity,
       pickup_date: call.pickupDate,
-      delivery_date: call.bookingDate
+      delivery_date: call.delivaryDate
     }
 
+    console.log(payload)
+
     const response = await voice.initiateOutboundCall({ payload })
+
+    console.log({ response })
 
     if (response?.data?.call_sid) {
       Object.assign(call, {

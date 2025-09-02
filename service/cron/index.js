@@ -41,12 +41,6 @@ async function processQueuedCalls (queuedCalls) {
         summary: parentCall?.disposition?.summary || ''
       }
 
-      await logCallEvent({
-        log: 'info',
-        content: `Preparing to initiate call for ${call.id} with payload: ${JSON.stringify(payload)}`,
-        callId: call._id
-      })
-
       try {
         const response = await voice.initiateOutboundCall({ payload })
         await logCallEvent({

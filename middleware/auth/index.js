@@ -13,9 +13,6 @@ const protect = async (req, _, next) => {
     : authHeader
 
   const token = tokenFromHeader || req.cookies?.[key]
-  console.log('Authorization Header:', authHeader)
-  console.log('Token:', token)
-
   if (!token) return next(new AppError('Unauthorized', 401))
 
   try {
