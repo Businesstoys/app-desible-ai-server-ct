@@ -68,7 +68,8 @@ const mapShipmentPayload = (payload) => ({
     email: c.Email || '',
     probillNumber: c.ProbillNumber || '',
     tierOverride: c.TierOverride,
-    tier: c.Tier
+    tier: c?.Tier,
+    dispatcherName: c?.DispatcherName
   })),
 
   referenceNumbers: (payload.ReferenceNumbers || []).map(r => ({
@@ -114,9 +115,14 @@ async function createCallsForShipment (shipment, carriers) {
       status: CALL_STATUSES.QUEUED.QUEUED,
       carrierName: c.name,
       dotNumber: c.dotNumber,
-      shipmentId: shipment._id,
+      probillNumber: c.probillNumber,
+      dispatcherName: c.dispatcherName,
+      shipment: shipment._id,
       shipmentNumber: shipment.number,
-      probillNumber: c.probillNumber
+      originCity: shipment?.origin?.city,
+      destinationCity: shipment.destination.city,
+      pickupDate: shipment.pickedUpAt,
+      delivaryDate: shipment.deliveredAt
     })
 
     await addJobToQueue({
