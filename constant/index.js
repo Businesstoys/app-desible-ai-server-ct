@@ -20,9 +20,9 @@ const CALL_STATUSES = {
   }
 }
 
-const MAX_CALL_ATTEMPTS = 12
+const DEFAULT_PRIORITY = 10
 
 module.exports = {
   CALL_STATUSES,
-  MAX_CALL_ATTEMPTS
+  DEFAULT_PRIORITY
 }

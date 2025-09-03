@@ -1,5 +1,7 @@
 // services/redis/streams.js
-const { redis } = require('@/service')
+const { Statics } = require('@/models')
+const { db } = require('@/service')
+const redis = require('@/service/redis')
 
 const TERMINAL = new Set(['completed', 'busy', 'not-reachable', 'no-answer', 'failed', 'cancelled'])
 const isTerminal = s => TERMINAL.has(String(s || '').toLowerCase())
@@ -16,6 +18,7 @@ async function waitForTerminalViaStream (callId, {
   blockMs = 15000,
   preCheck
 } = {}) {
+  console.log(redis)
   const redisConnection = redis.getRedis()
   const key = `call:status:${String(callId)}`
 
@@ -56,4 +59,12 @@ async function waitForTerminalViaStream (callId, {
   throw new Error('timeout waiting for terminal status')
 }
 
-module.exports = { waitForTerminalViaStream, isTerminal }
+async function getServerCapacity () {
+  const doc = await db.findOne(
+    Statics,
+    {},
+    { select: 'serverCapacity', lean: true }
+  )
+  return doc ? doc.serverCapacity : 0
+}
+module.exports = { waitForTerminalViaStream, isTerminal, getServerCapacity }

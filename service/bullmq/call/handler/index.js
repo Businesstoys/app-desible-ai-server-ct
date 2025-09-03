@@ -1,30 +1,33 @@
 const { Calls } = require('@/models')
 const { db, voice } = require('@/service')
-const { waitForTerminalViaStream, isTerminal } = require('./helper')
+const { waitForTerminalViaStream } = require('./helper')
+const { CALL_STATUSES } = require('@/constant')
+
+const getWebhookUrl = (id) => `https://00235e79a4c0.ngrok-free.app/webhooks/twilio?callId=${id}#rc=3&rp=all`
 
 const initiate = async ({ _id }) => {
   try {
     const call = await db.findOne(Calls, { _id })
     if (!call) throw new Error(`call not found: ${_id}`)
-    if (isTerminal(call?.status)) return
+
+    if (call?.status !== CALL_STATUSES.QUEUED.QUEUED) {
+      throw new Error(`Call is not queued (current status: ${call.status})`)
+    }
 
     const payload = {
       from_phone: call.fromPhone,
       to_phone: call.toPhone,
       voice_agent: call.voice,
-      dispatcher_name: 'Mike Johnson',
+      dispatcher_name: call.dispatcherName,
       carrier_name: call.carrierName,
       origin_city: call.originCity,
       destination_city: call.destinationCity,
       pickup_date: call.pickupDate,
       delivery_date: call.delivaryDate,
-      id: String(call._id)
+      webhookUrl: getWebhookUrl(call._id)
     }
 
-    console.log()
-
     const response = await voice.initiateOutboundCall({ payload })
-    console.log(response.data)
 
     if (response?.data?.Call_ID) {
       Object.assign(call, {
@@ -39,6 +42,7 @@ const initiate = async ({ _id }) => {
     }
     await call.save()
   } catch (err) {
+    console.log(err)
     await db.updateOne(
       Calls,
       { _id },

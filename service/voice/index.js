@@ -1,7 +1,6 @@
 const axios = require('axios')
 
 const API_BASE_URL = process.env.VOICE_API_BASE_URL
-const API_KEY = process.env.OPTIMUS_API_KEY || ''
 
 async function initiateOutboundCall ({ payload }) {
   const endpoint = 'start_outbound_call'
@@ -37,8 +36,7 @@ async function getCallDetails (callSid) {
   const url = `${API_BASE_URL}/fetch_call_details/${callSid}`
 
   const headers = {
-    'Content-Type': 'text/json',
-    'x-api-key': API_KEY
+    'Content-Type': 'text/json'
   }
 
   try {
@@ -53,8 +51,7 @@ async function getLiveStatus (callId) {
   const url = `${API_BASE_URL}/fetch_live_call_status/${callId}`
 
   const headers = {
-    'Content-Type': 'text/plain',
-    'x-api-key': API_KEY
+    'Content-Type': 'text/plain'
   }
 
   try {
@@ -70,8 +67,7 @@ async function getCallSummary (payload) {
   const url = `${API_BASE_URL}/get_summary_CT`
 
   const headers = {
-    'Content-Type': 'text/json',
-    'x-api-key': API_KEY
+    'Content-Type': 'text/json'
   }
 
   try {
@@ -88,8 +84,7 @@ async function hangUpCall (payload) {
   const url = `${API_BASE_URL}/hangup_call`
 
   const headers = {
-    'Content-Type': 'text/json',
-    'x-api-key': API_KEY
+    'Content-Type': 'text/json'
   }
 
   try {

@@ -139,6 +139,8 @@ async function createCallsForShipment (shipment, carriers) {
       delivaryDate: shipment.deliveredAt
     })
 
+    console.log('added to queue')
+
     await addJobToQueue({
       jobId: `call:${call._id}`,
       data: { _id: String(call._id) }

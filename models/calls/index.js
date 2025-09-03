@@ -33,7 +33,7 @@ const callSchema = new Schema(
       required: true,
       enum: [
         'queued', 'initiate', 'ringing', 'in-progress', 'completed',
-        'busy', 'not-reachable', 'no-answer', 'failed', 'cancelled', 'schedule'
+        'busy', 'not-reachable', 'no-answer', 'failed', 'cancelled', 'schedule', 'deleted'
       ]
     },
 

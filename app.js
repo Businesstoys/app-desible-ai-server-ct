@@ -43,6 +43,9 @@ const limiter = rateLimit({
   }
 })
 
+const { bullboard } = require('@/service')
+app.use('/admin/queues', bullboard.getRouter())
+
 app.use(limiter)
 
 app.post(
@@ -56,9 +59,6 @@ app.post(
   // require('@/middleware/auth').twilioWebhookProtect(),
   require('./controller/call').updateStatus
 )
-
-const { bullboard } = require('@/service')
-app.use('/admin/queues', bullboard.getRouter())
 
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'The server is up and running!' })

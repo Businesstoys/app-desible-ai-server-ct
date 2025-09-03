@@ -10,12 +10,10 @@ dotenv.config({
   path: './.env'
 })
 
-const { db, cron } = require('./service')
+const { db } = require('./service')
 
+// DB connection
 db.init()
-  .then(() => {
-    cron.init()
-  })
   .catch((err) => {
     console.log(err)
     process.exit(1)

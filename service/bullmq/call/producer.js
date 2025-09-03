@@ -37,4 +37,17 @@ const findAndRemoveJob = async ({ jobId }) => {
   }
 }
 
-module.exports = { addJobToQueue, getJobsList, findAndRemoveJob }
+const removeAllJobs = async (statuses = ['active', 'waiting', 'delayed', 'paused']) => {
+  try {
+    const jobList = await getJobsList({ status: statuses })
+    for (const job of await jobList) {
+      await job.remove()
+    }
+    return true
+  } catch (err) {
+    console.error('Error removing jobs:', err)
+    return false
+  }
+}
+
+module.exports = { addJobToQueue, getJobsList, findAndRemoveJob, removeAllJobs }

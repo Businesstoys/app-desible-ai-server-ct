@@ -10,9 +10,7 @@ router.use(auth.protect)
 
 // router.post('/export', calls.exportDetails)
 
-// router.get('/remove/:id',
-//   validator.validate(callValidations.deleteCall),
-//   calls.remove)
+router.post('/remove', call.remove)
 
 router.get('/kpi',
   validator.validate(callValidations.kpi),
@@ -22,6 +20,8 @@ router.get('/list',
   validator.validate(callValidations.callList),
   call.list)
 
-router.get('/delete/:id', call.deleteCall)
+// router.get('/remove/:id',
+//   validator.validate(callValidations.deleteCall),
+//   calls.remove)
 
 module.exports = router

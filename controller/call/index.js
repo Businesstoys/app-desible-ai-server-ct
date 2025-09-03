@@ -14,13 +14,20 @@ const formatDate = (date) => {
   return `${dd}-${mm}-${yy}`
 }
 
-const remove = async ({ user, params }, res, next) => {
-  const { id } = params
+const remove = async ({ user, body }, res, next) => {
+  const { id } = body
 
-  const call = await db.findOne(Calls, { _id: id, user: user._id })
-  if (!call) return next(new AppError('Call not found', 404))
+  console.log(id)
 
-  await db.deleteOne(Calls, { _id: id })
+  const result = await db.updateMany(
+    Calls,
+    { _id: id },
+    { $set: { status: 'deleted' } }
+  )
+
+  if (!result?.matchedCount) {
+    return next(new AppError('Call not found', 404))
+  }
 
   res.status(200).json({
     status: 'success',
