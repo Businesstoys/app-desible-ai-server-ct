@@ -69,7 +69,8 @@ const shipmentSchema = new Schema(
         email: { type: String }, // Email
         probillNumber: { type: String }, // ProbillNumber
         tierOverride: { type: String },
-        tier: { type: String }
+        tier: { type: String },
+        dispatcherName: { type: String }
       }
     ],
 

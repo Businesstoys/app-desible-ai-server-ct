@@ -8,8 +8,7 @@ const { call: callValidations } = require('@/validations')
 
 router.use(auth.protect)
 
-// router.post('/export', calls.exportDetails)
-
+router.post('/export', call.exportDetails)
 router.post('/remove', call.remove)
 
 router.get('/kpi',
@@ -19,10 +18,6 @@ router.get('/kpi',
 router.get('/list',
   validator.validate(callValidations.callList),
   call.list)
-
-router.get('/delete/:id',
-  validator.validate(callValidations.deleteCall),
-  call.deleteCall)
 
 router.post('/shipment', call.trackShipment)
 

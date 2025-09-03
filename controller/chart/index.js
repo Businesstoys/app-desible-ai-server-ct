@@ -3,9 +3,9 @@ const { db } = require('@/service')
 const { AsyncWrapper } = require('@/utils')
 const moment = require('moment-timezone')
 
-const attempts = async ({ query, user }, res) => {
+const attempts = async ({ query }, res) => {
   const { from, to } = query
-  const filter = { user: user._id }
+  const filter = {}
   if (from && to) {
     const start = moment.tz(`${from} 00:00:00`, 'YYYY-MM-DD HH:mm:ss', 'Asia/Kolkata').toDate()
     const end = moment.tz(`${to} 23:59:59.999`, 'YYYY-MM-DD HH:mm:ss.SSS', 'Asia/Kolkata').toDate()

@@ -3,7 +3,7 @@ const { db, voice } = require('@/service')
 const { waitForTerminalViaStream } = require('./helper')
 const { CALL_STATUSES } = require('@/constant')
 
-const getWebhookUrl = (id) => `https://00235e79a4c0.ngrok-free.app/webhooks/twilio?callId=${id}#rc=3&rp=all`
+const getWebhookUrl = (id) => `https://25d0b280e35a.ngrok-free.app/webhooks/twilio?callId=${id}#rc=3&rp=all`
 
 const initiate = async ({ _id }) => {
   try {

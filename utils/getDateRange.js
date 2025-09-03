@@ -8,11 +8,11 @@ const moment = require('moment-timezone')
  * @param {string} timezone - IANA timezone string (default "Asia/Kolkata")
  * @returns {Object} -  range filter, e.g., { start,end }
  */
-module.exports = (from, to, timezone = 'Asia/Kolkata') => {
+module.exports = (from, to, timezone) => {
   if (!from || !to) return {}
-
-  const start = moment.tz(`${from} 00:00:00`, 'YYYY-MM-DD HH:mm:ss', timezone).toDate()
-  const end = moment.tz(`${to} 23:59:59.999`, 'YYYY-MM-DD HH:mm:ss.SSS', timezone).toDate()
+  const tz = timezone || moment.tz.guess()
+  const start = moment.tz(`${from} 00:00:00`, 'YYYY-MM-DD HH:mm:ss', tz).toDate()
+  const end = moment.tz(`${to} 23:59:59.999`, 'YYYY-MM-DD HH:mm:ss.SSS', tz).toDate()
 
   return { start, end }
 }

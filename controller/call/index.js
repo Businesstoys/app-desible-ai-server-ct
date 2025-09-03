@@ -7,17 +7,165 @@ const { CALL_STATUSES } = require('@/constant')
 const { handleCompletedCall } = require('./helper')
 const { addJobToQueue } = require('@/service/bullmq/call/producer')
 
-const formatDate = (date) => {
-  const d = new Date(date)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yy = String(d.getFullYear()).slice(-2)
-  return `${dd}-${mm}-${yy}`
+const list = async ({ query }, res, _) => {
+  const {
+    search = '',
+    range = 'all',
+    agent = 'all',
+    attempt = 'all',
+    in: inStatus,
+    nin: ninStatus,
+    page = 1,
+    perPage = 10,
+    remark = 'all',
+    sortBy = 'effectiveDate',
+    sortOrder = 'desc',
+    outcome = 'all'
+  } = query
+
+  const pageNum = Math.max(1, parseInt(page, 10))
+  const limit = Math.max(1, Math.min(100, parseInt(perPage, 10)))
+  const skip = (pageNum - 1) * limit
+
+  const filter = {}
+
+  if (search) {
+    const regex = { $regex: search, $options: 'i' }
+    filter.$or = [
+      { shipmentNumber: regex },
+      { toPhone: regex },
+      { status: regex },
+      { studentName: regex }
+    ]
+  }
+
+  if (agent !== 'all') filter.agentName = agent
+
+  if (attempt !== 'all') {
+    const attemptNum = Number(attempt)
+    if (!isNaN(attemptNum)) filter.attempt = attemptNum
+  }
+
+  if (range !== 'all') {
+    const days = parseInt(range, 10)
+    if (!isNaN(days)) filter.createdOn = { $gte: new Date(Date.now() - days * 86400000) }
+  }
+
+  if (outcome && outcome !== 'all') filter.outcome = outcome
+
+  if (inStatus) {
+    filter.status = { $in: inStatus.split(',').map(s => s.trim()) }
+  } else if (ninStatus) {
+    filter.status = { $nin: ninStatus.split(',').map(s => s.trim()) }
+  }
+
+  const remarkArray = remark !== 'all'
+    ? remark?.split(',').map(r => r.trim()).filter(Boolean)
+    : null
+
+  const validSortFields = ['effectiveDate', 'duration']
+  const sortField = validSortFields.includes(sortBy) ? sortBy : 'effectiveDate'
+  const sortDirection = sortOrder === 'asc' ? 1 : -1
+
+  const baseStages = [
+    { $match: filter },
+    {
+      $lookup: {
+        from: 'dispositions',
+        let: { callId: '$_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$call', '$$callId'] } } },
+          { $sort: { createdAt: -1 } },
+          { $limit: 1 },
+          { $project: { remark: 1, summary: 1, subRemark: 1, _id: 0 } }
+        ],
+        as: 'disposition'
+      }
+    },
+    { $unwind: { path: '$disposition', preserveNullAndEmptyArrays: true } },
+    ...(remarkArray ? [{ $match: { 'disposition.remark': { $in: remarkArray } } }] : []),
+    {
+      $addFields: {
+        effectiveDate: { $ifNull: ['$initiatedAt', '$createdOn'] }
+      }
+    }
+  ]
+  const dataPipeline = [
+    ...baseStages,
+    { $sort: { [sortField]: sortDirection } },
+    { $skip: skip },
+    { $limit: limit },
+    {
+      $project: {
+        _id: 1,
+        toPhone: 1,
+        createdOn: { $ifNull: ['$initiatedAt', '$createdOn'] },
+        callRecordingUrl: '$recordingUrl',
+        transcriptionText: '$transcriptionText',
+        callDuration: '$duration',
+        callStatus: '$status',
+        scheduledAt: 1,
+        callAttempt: '$attempt',
+        shipmentNumber: 1,
+        carrierName: 1,
+        probillNumber: 1,
+        dispatcherName: 1,
+        remark: '$disposition.remark',
+        summary: '$disposition.summary',
+        subRemark: '$disposition.subRemark',
+        outcome: 1,
+        originCity: 1,
+        destinationCity: 1,
+        pickupDate: 1,
+        delivaryDate: 1,
+        chain: 1
+      }
+    },
+    {
+      $lookup: {
+        from: 'calls',
+        localField: 'chain',
+        foreignField: '_id',
+        pipeline: [
+          {
+            $project: {
+              _id: 1,
+              status: 1,
+              createdOn: 1,
+              duration: 1
+            }
+          }
+        ],
+        as: 'callHistory'
+      }
+    },
+    { $project: { chain: 0 } }
+  ]
+
+  const countPipeline = [...baseStages, { $count: 'total' }]
+
+  const [data, countResult] = await Promise.all([
+    db.aggregate(Calls, dataPipeline),
+    db.aggregate(Calls, countPipeline)
+  ])
+
+  const total = countResult[0]?.total || 0
+  const pageCount = Math.ceil(total / limit)
+
+  res.json({
+    status: 'success',
+    data,
+    meta: {
+      total,
+      page: pageNum,
+      perPage: limit,
+      pageCount
+    }
+  })
 }
 
-const remove = async ({ user, body }, res, next) => {
+const remove = async ({ body }, res, next) => {
   const { id } = body
-
   console.log(id)
 
   const result = await db.updateMany(
@@ -32,19 +180,18 @@ const remove = async ({ user, body }, res, next) => {
 
   res.status(200).json({
     status: 'success',
-    message: 'Call deleted successfully'
+    message: result?.matchedCount > 1 ? 'Calls deleted successfully' : 'Call deleted successfully'
   })
 }
 
 const exportDetails = async (req, res, next) => {
-  const { user } = req
   const {
     nin,
     startDate,
     endDate
   } = req.body
 
-  const filter = { user: user._id }
+  const filter = {}
 
   const { start, end } = getDateRange(startDate, endDate)
   filter.initiatedAt = { $gte: start, $lte: end }
@@ -54,34 +201,32 @@ const exportDetails = async (req, res, next) => {
     filter.status = { $nin: statuses }
   }
 
-  const calls = await db.find(Calls, filter, { sort: { initiatedAt: 1, createdOn: 1 }, populate: 'disposition' })
+  const calls = await db.find(Calls,
+    filter,
+    {
+      sort: { initiatedAt: 1, createdOn: 1 },
+      populate: 'disposition'
+    }
+  )
 
   if (!calls || calls.length === 0) {
     return next(new AppError('No call records found to export.', 404))
   }
 
   const workbook = XLSX.utils.book_new()
-
   const leadData = calls.map(item => ({
-    'Lead Id': item?.leadId || 'N/A',
-    'Student Name': item?.studentName || 'N/A',
-    'Primary Mobile Number': item?.toPhone || 'N/A',
-    'Created On': new Date(item.initiatedAt ?? item.createdOn).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+    shipmentNumber: item?.shipmentNumber || 'N/A',
+    carrierName: item?.carrierName,
+    summary: item?.dispostion?.summary,
+    remark: item?.dispostion?.remark,
+    CreatedOn: new Date(item.initiatedAt ?? item.createdOn)
   }))
 
   const leadSheet = XLSX.utils.json_to_sheet(leadData)
   XLSX.utils.book_append_sheet(workbook, leadSheet, 'Lead Data')
 
-  let filename = 'call_logs_export.xlsx'
-
-  if (startDate && endDate) {
-    const fromFormatted = formatDate(startDate)
-    const toFormatted = formatDate(endDate)
-    filename = `call_logs_export_${fromFormatted}_to_${toFormatted}.xlsx`
-  }
-
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-  res.setHeader('Content-Disposition', `attachment; filename=${filename}`)
+  res.setHeader('Content-Disposition', 'attachment; filename=\'call_logs_export.xlsx')
   const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
   res.send(buffer)
 }
@@ -306,241 +451,6 @@ const kpi = async ({ query }, res) => {
   })
 }
 
-const list = async ({ query, user }, res, _) => {
-  const {
-    search = '',
-    range = 'all',
-    agent = 'all',
-    attempt = 'all',
-    in: inStatus,
-    nin: ninStatus,
-    page = 1,
-    perPage = 10,
-    remark = 'all',
-    sortBy = 'effectiveDate',
-    sortOrder = 'desc',
-    outcome = ''
-  } = query
-
-  const pageNum = Math.max(1, parseInt(page, 10))
-  const limit = Math.max(1, Math.min(100, parseInt(perPage, 10)))
-  const skip = (pageNum - 1) * limit
-
-  const filter = {}
-
-  if (search) {
-    const regex = { $regex: search, $options: 'i' }
-    filter.$or = [
-      { customerName: regex },
-      { toPhone: regex },
-      { status: regex },
-      { studentName: regex }
-    ]
-  }
-
-  if (agent !== 'all') {
-    filter.agentName = agent
-  }
-
-  if (attempt !== 'all') {
-    const attemptNum = Number(attempt)
-    if (!isNaN(attemptNum)) {
-      filter.attempt = attemptNum
-    }
-  }
-
-  if (range !== 'all') {
-    const days = parseInt(range, 10)
-    if (!isNaN(days)) {
-      filter.createdOn = { $gte: new Date(Date.now() - days * 86400000) }
-    }
-  }
-
-  if (outcome && outcome !== 'All') {
-    filter.outcome = outcome
-  }
-
-  if (inStatus) {
-    filter.status = { $in: inStatus.split(',').map(s => s.trim()) }
-  } else if (ninStatus) {
-    filter.status = { $nin: ninStatus.split(',').map(s => s.trim()) }
-  }
-
-  const remarkArray = remark !== 'all'
-    ? remark?.split(',').map(r => r.trim()).filter(Boolean)
-    : null
-
-  const validSortFields = ['effectiveDate', 'duration']
-  const sortField = validSortFields.includes(sortBy) ? sortBy : 'effectiveDate'
-  const sortDirection = sortOrder === 'asc' ? 1 : -1
-
-  const pipeline = [
-    { $match: filter },
-    {
-      $lookup: {
-        from: 'dispositions',
-        let: { callId: '$_id' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$call', '$$callId'] } } },
-          { $sort: { createdAt: -1 } },
-          { $limit: 1 }
-        ],
-        as: 'disposition'
-      }
-    },
-    {
-      $unwind: {
-        path: '$disposition',
-        preserveNullAndEmptyArrays: true
-      }
-    },
-    ...(remarkArray
-      ? [{
-          $match: {
-            'disposition.remark': { $in: remarkArray }
-          }
-        }]
-      : []),
-    {
-      $addFields: {
-        effectiveDate: { $ifNull: ['$initiatedAt', '$createdOn'] }
-      }
-    },
-    { $sort: { [sortField]: sortDirection } },
-    { $skip: skip },
-    { $limit: limit },
-    {
-      $lookup: {
-        from: 'templates',
-        localField: 'template',
-        foreignField: '_id',
-        as: 'template'
-      }
-    },
-    {
-      $unwind: {
-        path: '$template',
-        preserveNullAndEmptyArrays: true
-      }
-    },
-    {
-      $lookup: {
-        from: 'calls',
-        localField: 'chain',
-        foreignField: '_id',
-        as: 'callHistory'
-      }
-    },
-    {
-      $project: {
-        transcriptionId: 0
-      }
-    }
-  ]
-
-  const countPipeline = [
-    { $match: filter },
-    {
-      $lookup: {
-        from: 'dispositions',
-        let: { callId: '$_id' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$call', '$$callId'] } } },
-          { $sort: { createdAt: -1 } },
-          { $limit: 1 }
-        ],
-        as: 'disposition'
-      }
-    },
-    {
-      $unwind: {
-        path: '$disposition',
-        preserveNullAndEmptyArrays: true
-      }
-    },
-    ...(remarkArray
-      ? [{
-          $match: {
-            'disposition.remark': { $in: remarkArray }
-          }
-        }]
-      : []),
-    { $count: 'total' }
-  ]
-
-  const [data, countResult] = await Promise.all([
-    db.aggregate(Calls, pipeline),
-    db.aggregate(Calls, countPipeline)
-  ])
-
-  const total = countResult[0]?.total || 0
-  const pageCount = Math.ceil(total / limit)
-
-  const mapData = data.map(doc => {
-    const voice = doc.template?.voices?.find(
-      v => v._id.toString() === (doc.voiceId || '').toString()
-    )
-
-    return {
-      _id: doc._id,
-      toPhone: doc.toPhone,
-      studentName: doc.studentName,
-      agentName: doc.agentName,
-      createdOn: doc.initiatedAt ?? doc.createdOn,
-      templateId: doc.template?._id,
-      template: doc.template?.name,
-      voiceName: voice?.label || '—',
-      callRecordingUrl: doc.recordingUrl,
-      transcriptionText: doc.transcriptionText,
-      gender: doc.gender,
-      callDuration: doc.duration,
-      callStatus: doc.status,
-      scheduledAt: doc.scheduledAt,
-      callAttempt: doc.attempt,
-      shipmentNumber: doc.shipmentNumber,
-      carrierName: doc.carrierName,
-      probillNumber: doc.probillNumber,
-      callHistory: doc.callHistory,
-      remark: doc?.disposition?.remark,
-      summary: doc?.disposition?.summary,
-      subRemark: doc?.disposition?.subRemark,
-      outcome: doc?.outcome,
-      originCity: doc?.originCity,
-      destinationCity: doc?.destinationCity,
-      pickupDate: doc.pickupDate,
-      delivaryDate: doc?.delivaryDate
-    }
-  })
-
-  res.json({
-    status: 'success',
-    data: mapData,
-    meta: {
-      total,
-      page: pageNum,
-      perPage: limit,
-      pageCount
-    }
-  })
-}
-
-const deleteCall = async ({ params }, res, next) => {
-  const { id } = params
-
-  const call = await db.findOne(Calls, { _id: id })
-  if (!call) return next(new AppError('Call not found', 404))
-
-  if (Object.values(CALL_STATUSES.ONGOING).includes(call?.status)) {
-    return next(new AppError('Call must be completed or failed to delete', 400))
-  }
-  await db.updateOne(Calls, { _id: id }, { $set: { status: 'deleted' } })
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Call deleted successfully'
-  })
-}
-
 const updateStatus = async (req, res) => {
   try {
     const { CallStatus, CallSid, CallDuration } = req.body
@@ -578,67 +488,57 @@ const updateStatus = async (req, res) => {
 }
 
 const trackShipment = async (req, res) => {
-  try {
-    const { toPhone, dispatcherName, carrierName } = req.body
+  const { toPhone, dispatcherName, carrierName } = req.body
 
-    // ✅ Static shipment for testing
-    const shipmentId = '68b65a476edcc592ad7ee1f6'
-    const shipmentNumber = '1158932444'
+  const shipmentId = '68b65a476edcc592ad7ee1f6'
+  const shipmentNumber = '1158932444'
 
-    const shipment = await db.findOne(
-      Shipments,
-      { _id: shipmentId, number: shipmentNumber }
-    )
+  const shipment = await db.findOne(
+    Shipments,
+    { _id: shipmentId, number: shipmentNumber }
+  )
 
-    if (!shipment) {
-      return res.status(404).json({ status: 'error', message: 'Shipment not found' })
-    }
-
-    // ✅ Fetch caller configuration
-    const statics = await db.findOne(
-      Statics,
-      {},
-      { select: 'selectedNumber selectedVoice', lean: true }
-    )
-
-    if (!statics) {
-      return res.status(500).json({ status: 'error', message: 'Caller config not found' })
-    }
-
-    // ✅ Create call
-    const call = await db.create(Calls, {
-      toPhone: normalizePhone(toPhone),
-      fromPhone: statics.selectedNumber,
-      voice: statics.selectedVoice,
-      status: CALL_STATUSES.QUEUED.QUEUED,
-      carrierName,
-      dispatcherName,
-      shipment: shipment._id,
-      shipmentNumber: shipment.number,
-      originCity: shipment.origin?.city,
-      destinationCity: shipment.destination?.city,
-      pickupDate: shipment.pickedUpAt,
-      delivaryDate: shipment.deliveredAt
-    })
-
-    // ✅ Push to queue
-    await addJobToQueue({
-      jobId: `call:${call._id}`,
-      data: { _id: String(call._id) }
-    })
-    return res.status(200).json({
-      status: 'success',
-      message: 'Call queued successfully',
-      shipment,
-      call
-    })
-  } catch (error) {
-    console.error('Track shipment call error:', error)
-    return res.status(500).json({
-      status: 'error',
-      message: error.message
-    })
+  if (!shipment) {
+    return res.status(404).json({ status: 'error', message: 'Shipment not found' })
   }
+
+  const statics = await db.findOne(
+    Statics,
+    {},
+    {
+      select: { selectedNumber: 1, selectedVoice: 1 },
+      lean: true
+    }
+  )
+
+  if (!statics) {
+    return res.status(500).json({ status: 'error', message: 'Caller config not found' })
+  }
+
+  const call = await db.create(Calls, {
+    toPhone: normalizePhone(toPhone),
+    fromPhone: statics.selectedNumber,
+    voice: statics.selectedVoice,
+    status: CALL_STATUSES.QUEUED.QUEUED,
+    carrierName,
+    dispatcherName,
+    shipment: shipment._id,
+    shipmentNumber: shipment.number,
+    originCity: shipment.origin?.city,
+    destinationCity: shipment.destination?.city,
+    pickupDate: shipment.pickedUpAt,
+    delivaryDate: shipment.deliveredAt
+  })
+
+  await addJobToQueue({
+    jobId: `call:${call._id}`,
+    data: { _id: String(call._id) }
+  })
+
+  return res.status(200).json({
+    status: 'success',
+    message: 'Call intiated successfully'
+  })
 }
 
 const asyncWrapped = AsyncWrapper({
@@ -646,7 +546,6 @@ const asyncWrapped = AsyncWrapper({
   remove,
   kpi,
   list,
-  deleteCall,
   trackShipment
 })
 

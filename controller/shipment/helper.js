@@ -116,10 +116,6 @@ async function createCallsForShipment (shipment, carriers) {
     const toPhone = normalizePhone(c.phone)
     if (!toPhone) continue
 
-    // const filter = { status: CALL_STATUSES.QUEUED.QUEUED, toPhone }
-    // const exists = await db.findOne(Calls, filter)
-    // if (exists) continue
-
     const statics = await db.findOne(Statics, {}, { select: 'selectedNumber selectedVoice', lean: true })
 
     const call = await db.create(Calls, {
@@ -138,8 +134,6 @@ async function createCallsForShipment (shipment, carriers) {
       pickupDate: shipment.pickedUpAt,
       delivaryDate: shipment.deliveredAt
     })
-
-    console.log('added to queue')
 
     await addJobToQueue({
       jobId: `call:${call._id}`,
