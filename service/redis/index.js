@@ -4,8 +4,8 @@ const { redisConfig } = require('@/service/config')
 let client
 
 function getRedis () {
-  console.log('this is redis--------')
   console.log({ redisConfig })
+  console.log('this is redis--------')
   if (!client) {
     client = new IORedis(redisConfig)
     const close = async () => {
