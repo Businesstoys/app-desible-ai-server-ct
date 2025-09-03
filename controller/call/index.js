@@ -166,7 +166,6 @@ const list = async ({ query }, res, _) => {
 
 const remove = async ({ body }, res, next) => {
   const { id } = body
-  console.log(id)
 
   const result = await db.updateMany(
     Calls,

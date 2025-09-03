@@ -1,11 +1,13 @@
 const { Statics } = require('@/models')
 const { db } = require('@/service')
+const worker = require('@/service/bullmq/call/worker')
 const { AsyncWrapper, AppError } = require('@/utils')
 
 const stopQueue = async (_, res) => {
   const statics = await db.findOne(Statics, {})
 
   statics.isQueueRunning = false
+  await worker.pause()
   await statics.save()
 
   res.status(200).json({
@@ -19,6 +21,7 @@ const startQueue = async (_, res) => {
   const statics = await db.findOne(Statics, {})
 
   statics.isQueueRunning = true
+  await worker.resume()
   await statics.save()
 
   res.status(200).json({
