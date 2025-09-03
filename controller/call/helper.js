@@ -62,7 +62,7 @@ const handleCompletedCall = async (call) => {
 }
 
 const handleRetryCall = async (call) => {
-  if (call.attempt > MAX_CALL_ATTEMPT) return
+  if (call.attempt >= MAX_CALL_ATTEMPT) return
   const scheduledAt = new Date(Date.now() + 2 * 60 * 1000)
   const { _id, createdOn, updatedAt, ...rest } = call.toObject ? call.toObject() : call
 
