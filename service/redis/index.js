@@ -18,7 +18,8 @@ function getRedis () {
 }
 
 async function xaddCallStatus (callId, status, payload = {}) {
-  return client.xadd(
+  const redis = getRedis()
+  return redis?.xadd(
     `call:status:${String(callId)}`,
     'MAXLEN', '~', 200,
     '*',
