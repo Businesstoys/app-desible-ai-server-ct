@@ -1,20 +1,8 @@
 // services/redis/streams.js
-const { getRedis } = require('@/service')
+const { redis } = require('@/service')
 
-const streamKey = (callId) => `call:status:${String(callId)}`
 const TERMINAL = new Set(['completed', 'busy', 'not-reachable', 'no-answer', 'failed', 'cancelled'])
 const isTerminal = s => TERMINAL.has(String(s || '').toLowerCase())
-
-async function xaddCallStatus (callId, status, payload = {}) {
-  const redis = getRedis()
-  return redis.xadd(
-    streamKey(callId),
-    'MAXLEN', '~', 200,
-    '*',
-    'status', String(status),
-    'payload', JSON.stringify(payload || {})
-  )
-}
 
 function toObject (arr) {
   const o = {}
@@ -28,10 +16,9 @@ async function waitForTerminalViaStream (callId, {
   blockMs = 15000,
   preCheck
 } = {}) {
-  const redis = getRedis()
-  const key = streamKey(callId)
+  const redisConnection = redis.getRedis()
+  const key = `call:status:${String(callId)}`
 
-  // 0) Optional pre-check (e.g., Mongo)
   if (typeof preCheck === 'function') {
     const pre = await preCheck()
     if (pre?.status && isTerminal(pre.status)) {
@@ -42,7 +29,7 @@ async function waitForTerminalViaStream (callId, {
   const deadline = Date.now() + timeoutMs
 
   let lastId
-  const last = await redis.xrevrange(key, '+', '-', 'COUNT', 1)
+  const last = await redisConnection.xrevrange(key, '+', '-', 'COUNT', 1)
   if (last.length) {
     const [foundId, fields] = last[0]
     const obj = toObject(fields)
@@ -54,8 +41,7 @@ async function waitForTerminalViaStream (callId, {
 
   while (Date.now() < deadline) {
     const thisBlock = Math.min(blockMs, Math.max(1, deadline - Date.now()))
-    const res = await redis.xread('BLOCK', thisBlock, 'STREAMS', key, lastId)
-    console.log('[STREAM] xread result:', res)
+    const res = await redisConnection.xread('BLOCK', thisBlock, 'STREAMS', key, lastId)
     if (!res) continue
 
     const [, entries] = res[0]
@@ -70,4 +56,4 @@ async function waitForTerminalViaStream (callId, {
   throw new Error('timeout waiting for terminal status')
 }
 
-module.exports = { xaddCallStatus, waitForTerminalViaStream, isTerminal }
+module.exports = { waitForTerminalViaStream, isTerminal }

@@ -5,7 +5,6 @@ const handler = require('./handler')
 const worker = new Worker(
   CALL_JOBS,
   async (job) => {
-    console.log('{hi}')
     await handler.initiate(job.data)
     await handler.waitUntilTerminal(job.data)
   },

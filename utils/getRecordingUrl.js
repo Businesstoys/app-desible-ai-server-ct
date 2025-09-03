@@ -5,5 +5,5 @@
  */
 
 module.exports = function (recordingId) {
-  return `https://api-idc.desible.ai/api/v1/recording/${recordingId}`
+  return ` https://5vgpkb68-8800.inc1.devtunnels.ms/api/v1/recording/${recordingId}`
 }

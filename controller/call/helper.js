@@ -23,6 +23,7 @@ async function getCallSummaryForCall (call, transcriptionText) {
   try {
     return await voice.getCallSummary(payload)
   } catch (err) {
+    console.log(err)
     return { extracted_data: null }
   }
 }
@@ -49,9 +50,11 @@ const handleCompletedCall = async (call) => {
 
       const disposition = await createDisposition(call._id, extractedData)
       call.disposition = disposition._id
+      call.outcome = disposition?.remark
     }
     await call.save()
   } catch (error) {
+    console.log({ error })
     // Silent catch to mirror original behavior.
     // Add logger here if needed.
   }

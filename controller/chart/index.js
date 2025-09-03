@@ -65,7 +65,7 @@ const attempts = async ({ query, user }, res) => {
 
   const data = await db.aggregate(Calls, pipeline)
 
-  const maxAttempt = 15
+  const maxAttempt = 4
   const attemptMap = Object.fromEntries(data.map(d => [d.attempt, d]))
   const chartData = Array.from({ length: maxAttempt }, (_, i) => {
     const a = i + 1

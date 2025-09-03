@@ -1,8 +1,22 @@
+/* eslint-disable no-useless-escape */
+const moment = require('moment-timezone')
+
 const { CALL_STATUSES } = require('@/constant')
 const { Calls, Statics } = require('@/models')
 const { db } = require('@/service')
 const { addJobToQueue } = require('@/service/bullmq/call/producer')
 const { normalizePhone } = require('@/utils')
+
+const BUSINESS_TZ = 'America/Chicago'
+const hasOffsetOrZ = s => /[zZ]|[+\-]\d{2}:\d{2}$/.test(s)
+
+function toUtcDate (input, zone = BUSINESS_TZ) {
+  if (!input) return undefined
+  const s = String(input).trim()
+  const m = hasOffsetOrZ(s) ? moment.parseZone(s) : moment.tz(s, zone)
+  if (!m.isValid()) return undefined
+  return m.utc().toDate()
+}
 
 const mapShipmentPayload = (payload) => ({
   number: payload.Number,
@@ -12,11 +26,11 @@ const mapShipmentPayload = (payload) => ({
   mode: payload.ModeId,
   modeId: payload.ModeId,
 
-  plannedAt: payload.Planned ? new Date(payload.Planned) : undefined,
-  shippedAt: payload.Shipped ? new Date(payload.Shipped) : undefined,
-  pickedUpAt: payload.PickedUp ? new Date(payload.PickedUp) : undefined,
-  deliveredAt: payload.Delivered ? new Date(payload.Delivered) : undefined,
-  canceledAt: payload.Canceled ? new Date(payload.Canceled) : undefined,
+  plannedAt: toUtcDate(payload?.Planned),
+  shippedAt: toUtcDate(payload?.Shipped),
+  pickedUpAt: toUtcDate(payload?.PickedUp),
+  deliveredAt: toUtcDate(payload?.Delivered),
+  canceledAt: toUtcDate(payload?.Canceled),
 
   cost: payload.Cost,
   revenue: payload.Revenue,
@@ -40,12 +54,12 @@ const mapShipmentPayload = (payload) => ({
   },
 
   pickupWindow: {
-    start: payload.PickupAppointmentWindowStart ? new Date(payload.PickupAppointmentWindowStart) : undefined,
-    end: payload.PickupAppointmentWindowEnd ? new Date(payload.PickupAppointmentWindowEnd) : undefined
+    start: toUtcDate(payload?.PickupAppointmentWindowStart),
+    end: toUtcDate(payload?.PickupAppointmentWindowEnd)
   },
   deliveryWindow: {
-    start: payload.DeliveryAppointmentWindowStart ? new Date(payload.DeliveryAppointmentWindowStart) : undefined,
-    end: payload.DeliveryAppointmentWindowEnd ? new Date(payload.DeliveryAppointmentWindowEnd) : undefined
+    start: toUtcDate(payload?.DeliveryAppointmentWindowStart),
+    end: toUtcDate(payload?.DeliveryAppointmentWindowEnd)
   },
 
   equipment: {

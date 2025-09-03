@@ -1,10 +1,9 @@
 const XLSX = require('xlsx')
 
 const { Calls } = require('@/models')
-const { db } = require('@/service')
+const { db, redis } = require('@/service')
 const { AsyncWrapper, AppError, getDateRange } = require('@/utils')
 const { CALL_STATUSES } = require('@/constant')
-const { xaddCallStatus } = require('@/service/bullmq/call/handler/helper')
 const { handleCompletedCall } = require('./helper')
 
 const formatDate = (date) => {
@@ -311,7 +310,8 @@ const list = async ({ query, user }, res, _) => {
     perPage = 10,
     remark = 'all',
     sortBy = 'effectiveDate',
-    sortOrder = 'desc'
+    sortOrder = 'desc',
+    outcome = ''
   } = query
 
   const pageNum = Math.max(1, parseInt(page, 10))
@@ -346,6 +346,10 @@ const list = async ({ query, user }, res, _) => {
     if (!isNaN(days)) {
       filter.createdOn = { $gte: new Date(Date.now() - days * 86400000) }
     }
+  }
+
+  if (outcome && outcome !== 'All') {
+    filter.outcome = outcome
   }
 
   if (inStatus) {
@@ -491,7 +495,12 @@ const list = async ({ query, user }, res, _) => {
       callHistory: doc.callHistory,
       remark: doc?.disposition?.remark,
       summary: doc?.disposition?.summary,
-      subRemark: doc?.disposition?.subRemark
+      subRemark: doc?.disposition?.subRemark,
+      outcome: doc?.outcome,
+      originCity: doc?.originCity,
+      destinationCity: doc?.destinationCity,
+      pickupDate: doc.pickupDate,
+      delivaryDate: doc?.delivaryDate
     }
   })
 
@@ -527,8 +536,8 @@ const deleteCall = async ({ params }, res, next) => {
 
 const updateStatus = async (req, res) => {
   try {
-    const { CallStatus, CallSid } = req.body
-    const { id } = req.query
+    const { CallStatus, CallSid, CallDuration } = req.body
+    const { callId } = req.query
 
     if (!CallStatus || !CallSid) {
       return res.status(400).json({ error: 'callStatus and callSid are required' })
@@ -536,7 +545,7 @@ const updateStatus = async (req, res) => {
 
     const call = await db.findOneAndUpdate(
       Calls,
-      { _id: id },
+      { _id: callId },
       { $set: { status: CallStatus } },
       { new: true }
     )
@@ -546,9 +555,11 @@ const updateStatus = async (req, res) => {
     }
 
     const { status, _id } = call
-    await xaddCallStatus(_id, status, { status, _id })
 
     if (CALL_STATUSES.COMPLETED.COMPLETED === CallStatus) {
+      call.duration = CallDuration
+      await call.save()
+      await redis.xaddCallStatus(_id, status, { status, _id })
       await handleCompletedCall(call)
     }
 

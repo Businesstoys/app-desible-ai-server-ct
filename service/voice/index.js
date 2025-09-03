@@ -7,6 +7,7 @@ async function initiateOutboundCall ({ payload }) {
   const endpoint = 'start_outbound_call'
 
   const url = `${API_BASE_URL}/${endpoint}`
+  console.log(url, payload)
   try {
     const response = await axios.post(url, payload)
     return response
@@ -66,7 +67,7 @@ async function getLiveStatus (callId) {
 }
 
 async function getCallSummary (payload) {
-  const url = `${API_BASE_URL}/get_summary_idreamcareer`
+  const url = `${API_BASE_URL}/get_summary_CT`
 
   const headers = {
     'Content-Type': 'text/json',
@@ -75,6 +76,7 @@ async function getCallSummary (payload) {
 
   try {
     const response = await axios.post(url, payload, { headers })
+    console.log({ response })
     return response?.data
   } catch (error) {
     console.error('API Summary Failed:', error.response ? error.response.data : error.message)

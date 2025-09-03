@@ -26,6 +26,7 @@ const callSchema = new Schema(
     transcriptionText: { type: String, default: '', trim: true },
     recordingUrl: { type: String, default: '', trim: true },
     duration: { type: Number, default: 0, min: 0 },
+    outcome: { type: String, default: 'pending' },
 
     status: {
       type: String,

@@ -22,6 +22,6 @@ router.get('/list',
   validator.validate(callValidations.callList),
   call.list)
 
-// router.get('/delete/:id', calls.deleteCall)
+router.get('/delete/:id', call.deleteCall)
 
 module.exports = router
