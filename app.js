@@ -67,7 +67,7 @@ app.get('/', (req, res) => {
 app.use('/', require('./routes'))
 
 // 404 PAGE
-app.use('*', (req, res, next) => {
+app.use('*', (req, _, next) => {
   next(new AppError(`Can't find ${req.originalUrl}`, 404))
 })
 

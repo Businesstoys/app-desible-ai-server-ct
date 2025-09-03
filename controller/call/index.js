@@ -3,7 +3,7 @@ const XLSX = require('xlsx')
 const { Calls, Shipments, Statics } = require('@/models')
 const { db, redis } = require('@/service')
 const { AsyncWrapper, AppError, getDateRange, normalizePhone } = require('@/utils')
-const { CALL_STATUSES, MAX_CALL_ATTEMPT } = require('@/constant')
+const { CALL_STATUSES } = require('@/constant')
 const { handleCompletedCall, handleRetryCall } = require('./helper')
 const { addJobToQueue } = require('@/service/bullmq/call/producer')
 
