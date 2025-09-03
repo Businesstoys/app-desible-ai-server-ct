@@ -14,6 +14,7 @@ const callSchema = new Schema(
     delivaryDate: { type: String },
     carrierId: { type: String },
     carrierName: { type: String },
+    dispatcherName: { type: String },
     carrierEmail: { type: String },
     probillNumber: { type: String },
 

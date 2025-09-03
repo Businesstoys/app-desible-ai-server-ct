@@ -20,8 +20,10 @@ router.get('/list',
   validator.validate(callValidations.callList),
   call.list)
 
-// router.get('/remove/:id',
-//   validator.validate(callValidations.deleteCall),
-//   calls.remove)
+router.get('/delete/:id',
+  validator.validate(callValidations.deleteCall),
+  call.deleteCall)
+
+router.post('/shipment', call.trackShipment)
 
 module.exports = router

@@ -1,10 +1,11 @@
 const XLSX = require('xlsx')
 
-const { Calls } = require('@/models')
+const { Calls, Shipments, Statics } = require('@/models')
 const { db, redis } = require('@/service')
-const { AsyncWrapper, AppError, getDateRange } = require('@/utils')
+const { AsyncWrapper, AppError, getDateRange, normalizePhone } = require('@/utils')
 const { CALL_STATUSES } = require('@/constant')
 const { handleCompletedCall } = require('./helper')
+const { addJobToQueue } = require('@/service/bullmq/call/producer')
 
 const formatDate = (date) => {
   const d = new Date(date)
@@ -325,7 +326,7 @@ const list = async ({ query, user }, res, _) => {
   const limit = Math.max(1, Math.min(100, parseInt(perPage, 10)))
   const skip = (pageNum - 1) * limit
 
-  const filter = { }
+  const filter = {}
 
   if (search) {
     const regex = { $regex: search, $options: 'i' }
@@ -529,10 +530,9 @@ const deleteCall = async ({ params }, res, next) => {
   const call = await db.findOne(Calls, { _id: id })
   if (!call) return next(new AppError('Call not found', 404))
 
-  if (CALL_STATUSES.ONGOING.includes(call?.status)) {
+  if (Object.values(CALL_STATUSES.ONGOING).includes(call?.status)) {
     return next(new AppError('Call must be completed or failed to delete', 400))
   }
-
   await db.updateOne(Calls, { _id: id }, { $set: { status: 'deleted' } })
 
   res.status(200).json({
@@ -577,12 +577,77 @@ const updateStatus = async (req, res) => {
   }
 }
 
+const trackShipment = async (req, res) => {
+  try {
+    const { toPhone, dispatcherName, carrierName } = req.body
+
+    // ✅ Static shipment for testing
+    const shipmentId = '68b65a476edcc592ad7ee1f6'
+    const shipmentNumber = '1158932444'
+
+    const shipment = await db.findOne(
+      Shipments,
+      { _id: shipmentId, number: shipmentNumber }
+    )
+
+    if (!shipment) {
+      return res.status(404).json({ status: 'error', message: 'Shipment not found' })
+    }
+
+    // ✅ Fetch caller configuration
+    const statics = await db.findOne(
+      Statics,
+      {},
+      { select: 'selectedNumber selectedVoice', lean: true }
+    )
+
+    if (!statics) {
+      return res.status(500).json({ status: 'error', message: 'Caller config not found' })
+    }
+
+    // ✅ Create call
+    const call = await db.create(Calls, {
+      toPhone: normalizePhone(toPhone),
+      fromPhone: statics.selectedNumber,
+      voice: statics.selectedVoice,
+      status: CALL_STATUSES.QUEUED.QUEUED,
+      carrierName,
+      dispatcherName,
+      shipment: shipment._id,
+      shipmentNumber: shipment.number,
+      originCity: shipment.origin?.city,
+      destinationCity: shipment.destination?.city,
+      pickupDate: shipment.pickedUpAt,
+      delivaryDate: shipment.deliveredAt
+    })
+
+    // ✅ Push to queue
+    await addJobToQueue({
+      jobId: `call:${call._id}`,
+      data: { _id: String(call._id) }
+    })
+    return res.status(200).json({
+      status: 'success',
+      message: 'Call queued successfully',
+      shipment,
+      call
+    })
+  } catch (error) {
+    console.error('Track shipment call error:', error)
+    return res.status(500).json({
+      status: 'error',
+      message: error.message
+    })
+  }
+}
+
 const asyncWrapped = AsyncWrapper({
   exportDetails,
   remove,
   kpi,
   list,
-  deleteCall
+  deleteCall,
+  trackShipment
 })
 
 module.exports = {
