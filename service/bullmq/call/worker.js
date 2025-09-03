@@ -1,6 +1,7 @@
 const { Worker } = require('bullmq')
 const { CALL_JOBS } = require('../names')
 const handler = require('./handler')
+const redisConfig = require('@/service/config')
 
 const worker = new Worker(
   CALL_JOBS,
@@ -9,7 +10,7 @@ const worker = new Worker(
     await handler.waitUntilTerminal(job.data)
   },
   {
-    ...require('@/service/config'),
+    ...redisConfig,
     concurrency: 2
   }
 )
