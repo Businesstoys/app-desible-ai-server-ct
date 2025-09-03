@@ -25,4 +25,6 @@ const baseConfig = {
 
 const config = configs[process.env.NODE_ENV || 'dev']
 
+console.log(config)
+
 module.exports = { ...baseConfig, ...config }

@@ -5,5 +5,5 @@
  */
 
 module.exports = function (recordingId) {
-  return ` https://5vgpkb68-8800.inc1.devtunnels.ms/api/v1/recording/${recordingId}`
+  return `https://ct-api-h0bzdsbvcbewcpae.centralus-01.azurewebsites.net/api/v1/recording/${recordingId}`
 }
