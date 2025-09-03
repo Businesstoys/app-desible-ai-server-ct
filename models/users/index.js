@@ -7,7 +7,7 @@ const userSchema = new Schema(
   {
     email: { type: String, unique: true, required: true, trim: true, lowercase: true },
     name: { type: String, trim: true, required: true },
-    mobileNumber: { type: String, trim: true, required: true },
+    mobileNumber: { type: String, trim: true, required: true }
     // password: { type: String, required: true, minlength: 6 },
     // calls: [{ type: Schema.Types.ObjectId, ref: 'Call' }]
   },

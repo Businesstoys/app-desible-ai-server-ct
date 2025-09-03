@@ -18,7 +18,7 @@ const CALL_STATUSES = {
     CANCELLED: 'cancelled',
     HANG_UP: 'hang-up'
   },
-  FAILED_LIST: ['completed', 'busy', 'not-reachable', 'no-answer', 'failed', 'cancelled'],
+  FAILED_LIST: ['busy', 'not-reachable', 'no-answer', 'failed', 'cancelled'],
   SCHEDULE: 'schedule'
 }
 
