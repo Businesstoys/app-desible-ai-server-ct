@@ -3,7 +3,7 @@ const { Queue } = require('bullmq')
 const { CALL_JOBS } = require('../names')
 
 const queue = new Queue(CALL_JOBS, {
-  ...require('@/service/config')
+  ...require('@/service/config').bullmqConfig
 })
 
 queue.on('completed', (_, result) => {

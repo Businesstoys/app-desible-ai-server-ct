@@ -476,8 +476,8 @@ const updateStatus = async (req, res) => {
     if (CALL_STATUSES.COMPLETED.COMPLETED === CallStatus) {
       call.duration = CallDuration
       await call.save()
-      await redis.xaddCallStatus(_id, status, { status, _id })
       await handleCompletedCall(call)
+      await redis.xaddCallStatus(_id, status, { status, _id })
     }
 
     return res.json({ ok: true })

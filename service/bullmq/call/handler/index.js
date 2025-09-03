@@ -26,6 +26,7 @@ const initiate = async ({ _id }) => {
       delivery_date: call.delivaryDate,
       webhookUrl: getWebhookUrl(call._id)
     }
+    console.log({ payload })
 
     const response = await voice.initiateOutboundCall({ payload })
 

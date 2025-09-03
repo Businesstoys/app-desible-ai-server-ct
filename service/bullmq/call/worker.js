@@ -9,7 +9,7 @@ const worker = new Worker(
     await handler.waitUntilTerminal(job.data)
   },
   {
-    ...require('@/service/config'),
+    ...require('@/service/config').bullmqConfig,
     concurrency: 2
   }
 )
