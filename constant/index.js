@@ -17,12 +17,16 @@ const CALL_STATUSES = {
     FAILED: 'failed',
     CANCELLED: 'cancelled',
     HANG_UP: 'hang-up'
-  }
+  },
+  FAILED_LIST: ['completed', 'busy', 'not-reachable', 'no-answer', 'failed', 'cancelled'],
+  SCHEDULE: 'schedule'
 }
 
 const DEFAULT_PRIORITY = 10
+const MAX_CALL_ATTEMPT = 4
 
 module.exports = {
   CALL_STATUSES,
-  DEFAULT_PRIORITY
+  DEFAULT_PRIORITY,
+  MAX_CALL_ATTEMPT
 }

@@ -1,4 +1,5 @@
-const { Dispositions } = require('@/models')
+const { CALL_STATUSES, MAX_CALL_ATTEMPT } = require('@/constant')
+const { Dispositions, Calls } = require('@/models')
 const { db, voice } = require('@/service')
 const { getRecordingUrl } = require('@/utils')
 
@@ -60,8 +61,30 @@ const handleCompletedCall = async (call) => {
   }
 }
 
+const handleRetryCall = async (call) => {
+  if (call.attempt > MAX_CALL_ATTEMPT) return
+  const scheduledAt = new Date(Date.now() + 2 * 60 * 1000)
+  const { _id, createdOn, updatedAt, ...rest } = call.toObject ? call.toObject() : call
+
+  const callData = {
+    ...rest,
+    attempt: (call.attempt ?? 0) + 1,
+    scheduledAt,
+    status: CALL_STATUSES.SCHEDULE,
+    parentId: call._id,
+    rootId: call.rootId || call._id,
+    chain: [...(call.chain || []), call._id],
+    priority: 1
+  }
+
+  console.log('call created')
+
+  return db.create(Calls, callData)
+}
+
 module.exports = {
   handleCompletedCall,
   getCallSummaryForCall,
-  createDisposition
+  createDisposition,
+  handleRetryCall
 }

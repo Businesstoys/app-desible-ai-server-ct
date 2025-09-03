@@ -138,140 +138,100 @@ const report = async ({ user, query }, res) => {
   res.json({ status: 'success', data })
 }
 
+// statusReport: optimized + TZ-aware day bucketing
 const statusReport = async ({ user, query }, res) => {
-  const { from, to } = query
-  const filter = { userId: user._id }
+  const { from, to, tz = 'UTC' } = query
 
-  if (from && to) {
-    const fromDate = new Date(from)
-    const toDate = new Date(to)
-    toDate.setHours(23, 59, 59, 999)
-    filter.createdOn = { $gte: fromDate, $lte: toDate }
-  }
+  // Build a TZ-aware $match using $dateFromString + $dateAdd so server TZ never leaks in
+  const matchStage = (() => {
+    if (!from || !to) return {}
+    return {
+      $expr: {
+        $and: [
+          {
+            $gte: [
+              '$createdOn',
+              {
+                $dateFromString: {
+                  dateString: `${from}T00:00:00`,
+                  timezone: tz
+                }
+              }
+            ]
+          },
+          {
+            $lt: [
+              '$createdOn',
+              {
+                $dateAdd: {
+                  startDate: {
+                    $dateFromString: {
+                      dateString: `${to}T00:00:00`,
+                      timezone: tz
+                    }
+                  },
+                  unit: 'day',
+                  amount: 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  })()
 
-  const data = await db.aggregate(
-    Calls,
-    [
-      { $match: filter },
-      {
-        $group: {
-          _id: {
-            year: { $year: { date: '$createdOn', timezone: 'UTC' } },
-            month: { $month: { date: '$createdOn', timezone: 'UTC' } },
-            day: { $dayOfMonth: { date: '$createdOn', timezone: 'UTC' } },
-            status: '$callStatus'
-          },
-          sampleDate: { $min: '$createdOn' },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-      {
-        $group: {
-          _id: {
-            year: '$_id.year',
-            month: '$_id.month',
-            day: '$_id.day',
-            date: '$sampleDate'
-          },
-          statuses: {
-            $push: {
-              status: '$_id.status',
-              count: '$count'
-            }
-          }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-      {
-        $project: {
-          _id: 0,
-          date: {
-            $dateToString: {
-              format: '%d %b',
-              date: '$_id.date',
-              timezone: 'UTC'
-            }
-          },
-          completed: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$statuses',
-                    as: 'status',
-                    cond: { $eq: ['$$status.status', 'completed'] }
-                  }
-                },
-                as: 'filtered',
-                in: '$$filtered.count'
-              }
-            }
-          },
-          failed: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$statuses',
-                    as: 'status',
-                    cond: { $eq: ['$$status.status', 'failed'] }
-                  }
-                },
-                as: 'filtered',
-                in: '$$filtered.count'
-              }
-            }
-          },
-          busy: {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$statuses',
-                    as: 'status',
-                    cond: { $eq: ['$$status.status', 'busy'] }
-                  }
-                },
-                as: 'filtered',
-                in: '$$filtered.count'
-              }
-            }
-          },
-          'no-answer': {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$statuses',
-                    as: 'status',
-                    cond: { $eq: ['$$status.status', 'no-answer'] }
-                  }
-                },
-                as: 'filtered',
-                in: '$$filtered.count'
-              }
-            }
-          },
-          'not-reachable': {
-            $sum: {
-              $map: {
-                input: {
-                  $filter: {
-                    input: '$statuses',
-                    as: 'status',
-                    cond: { $eq: ['$$status.status', 'not-reachable'] }
-                  }
-                },
-                as: 'filtered',
-                in: '$$filtered.count'
-              }
-            }
-          }
+  const pipeline = [
+    Object.keys(matchStage).length ? { $match: matchStage } : null,
+    {
+      $addFields: {
+        day: {
+          $dateTrunc: { date: '$createdOn', unit: 'day', timezone: tz }
         }
       }
-    ]
-  )
+    },
+
+    // Single pass pivot of statuses; this auto “sums the same date twice”
+    {
+      $group: {
+        _id: '$day',
+        completed: {
+          $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+        },
+        failed: {
+          $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] }
+        },
+        busy: {
+          $sum: { $cond: [{ $eq: ['$status', 'busy'] }, 1, 0] }
+        },
+        no_answer: {
+          $sum: { $cond: [{ $eq: ['$status', 'no-answer'] }, 1, 0] }
+        },
+        not_reachable: {
+          $sum: { $cond: [{ $eq: ['$status', 'not-reachable'] }, 1, 0] }
+        }
+      }
+    },
+
+    // Sort by actual day, then format for display after sorting
+    { $sort: { _id: 1 } },
+
+    {
+      $project: {
+        _id: 0,
+        date: {
+          $dateToString: { format: '%d %b', date: '$_id', timezone: tz }
+        },
+        completed: 1,
+        failed: 1,
+        busy: 1,
+        'no-answer': '$no_answer',
+        'not-reachable': '$not_reachable'
+      }
+    }
+  ].filter(Boolean)
+
+  const data = await db.aggregate(Calls, pipeline)
 
   res.json({ status: 'success', data })
 }
