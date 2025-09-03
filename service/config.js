@@ -26,20 +26,21 @@ const baseConfig = {
     console.log(`Redis retry (attempt ${times}), waiting 1500ms`)
     return 1500
   },
-  pingInterval: 1000 // harmless if ignored
+  pingInterval: 1000
 }
 
-// Avoid spreading undefined
-const merged = { ...baseConfig, ...(selected || {}) }
+const bullmqConfig = { ...baseConfig, ...selected }
+const redisConfig = { ...baseConfig, ...(selected.connection || {}) }
 
 console.log({
   env,
   usingEnvKey: envKey,
-  connection: {
-    host: merged.connection?.host,
-    port: merged.connection?.port,
-    tls: merged.connection?.tls ? { enabled: true, servername: merged.connection.tls.servername } : null
+  bullmqConnection: bullmqConfig.connection,
+  redisConnection: {
+    host: redisConfig.host,
+    port: redisConfig.port,
+    tls: redisConfig.tls ? { enabled: true, servername: redisConfig.tls.servername } : null
   }
 })
 
-module.exports = merged
+module.exports = { bullmqConfig, redisConfig }

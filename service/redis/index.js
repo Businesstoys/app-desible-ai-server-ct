@@ -1,12 +1,12 @@
 // services/redis/index.js
 const IORedis = require('ioredis')
-const redisConnetion = require('@/service/config')
-
+const { redisConfig } = require('@/service/config')
 let client
 
 function getRedis () {
+  console.log('this is redis--------')
   if (!client) {
-    client = new IORedis(redisConnetion)
+    client = new IORedis(redisConfig)
     const close = async () => {
       try { await client.quit() } catch {}
       process.exit(0)

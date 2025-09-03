@@ -1,10 +1,10 @@
 const { Queue } = require('bullmq')
-const redisConfig = require('@/service/config')
+const { bullmqConfig } = require('@/service/config')
 
 const { CALL_JOBS } = require('../names')
 
 const queue = new Queue(CALL_JOBS, {
-  ...redisConfig
+  ...bullmqConfig
 })
 
 queue.on('completed', (_, result) => {
