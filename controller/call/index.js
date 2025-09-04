@@ -1,6 +1,6 @@
 const XLSX = require('xlsx')
 
-const { Calls, Shipments, Statics } = require('@/models')
+const { Calls, Statics } = require('@/models')
 const { db, redis } = require('@/service')
 const { AsyncWrapper, AppError, getDateRange, normalizePhone } = require('@/utils')
 const { CALL_STATUSES } = require('@/constant')
@@ -492,19 +492,10 @@ const updateStatus = async (req, res) => {
 }
 
 const trackShipment = async (req, res) => {
-  const { toPhone, dispatcherName, carrierName } = req.body
+  const { toPhone, dispatcherName, destination, origin, pickupDate, deliveryDate, carrierName } = req.body
 
   const shipmentId = '68b65a476edcc592ad7ee1f6'
   const shipmentNumber = '1158932444'
-
-  const shipment = await db.findOne(
-    Shipments,
-    { _id: shipmentId, number: shipmentNumber }
-  )
-
-  if (!shipment) {
-    return res.status(404).json({ status: 'error', message: 'Shipment not found' })
-  }
 
   const statics = await db.findOne(
     Statics,
@@ -526,12 +517,12 @@ const trackShipment = async (req, res) => {
     status: CALL_STATUSES.QUEUED.QUEUED,
     carrierName,
     dispatcherName,
-    shipment: shipment._id,
-    shipmentNumber: shipment.number,
-    originCity: shipment.origin?.city,
-    destinationCity: shipment.destination?.city,
-    pickupDate: shipment.pickedUpAt,
-    delivaryDate: shipment.deliveredAt
+    shipment: shipmentId,
+    shipmentNumber,
+    originCity: origin,
+    destinationCity: destination,
+    pickupDate,
+    delivaryDate: deliveryDate
   })
 
   await addJobToQueue({
