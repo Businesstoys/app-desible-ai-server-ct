@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 const { CALL_STATUSES, MAX_CALL_ATTEMPT } = require('@/constant')
 const { Dispositions, Calls } = require('@/models')
 const { db, voice } = require('@/service')

@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 const XLSX = require('xlsx')
 
 const { Calls, Statics } = require('@/models')
@@ -6,6 +7,19 @@ const { AsyncWrapper, AppError, getDateRange, normalizePhone } = require('@/util
 const { CALL_STATUSES } = require('@/constant')
 const { handleCompletedCall, handleRetryCall } = require('./helper')
 const { addJobToQueue } = require('@/service/bullmq/call/producer')
+
+const moment = require('moment-timezone')
+
+const BUSINESS_TZ = 'America/Chicago'
+const hasOffsetOrZ = s => /[zZ]|[+\-]\d{2}:\d{2}$/.test(s)
+
+function toUtcDate (input, zone = BUSINESS_TZ) {
+  if (!input) return undefined
+  const s = String(input).trim()
+  const m = hasOffsetOrZ(s) ? moment.parseZone(s) : moment.tz(s, zone)
+  if (!m.isValid()) return undefined
+  return m.utc().toDate()
+}
 
 const list = async ({ query }, res, _) => {
   const {
@@ -521,8 +535,8 @@ const trackShipment = async (req, res) => {
     shipmentNumber,
     originCity: origin,
     destinationCity: destination,
-    pickupDate : new Date(pickupDate),
-    delivaryDate: new Date(deliveryDate)
+    pickupDate: toUtcDate(pickupDate),
+    delivaryDate: toUtcDate(deliveryDate)
   })
 
   await addJobToQueue({
