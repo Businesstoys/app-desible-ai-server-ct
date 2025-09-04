@@ -22,6 +22,8 @@ async function getCallSummaryForCall (call, transcriptionText) {
     to_phone: call.toPhone
   }
 
+  console.log({ payload })
+
   try {
     return await voice.getCallSummary(payload)
   } catch (err) {
@@ -49,6 +51,7 @@ const handleCompletedCall = async (call) => {
     if (transcriptionText) {
       const summary = await getCallSummaryForCall(call, transcriptionText)
       const extractedData = summary?.extracted_data || {}
+      console.log({ extractedData })
 
       const disposition = await createDisposition(call._id, extractedData)
       call.disposition = disposition._id
