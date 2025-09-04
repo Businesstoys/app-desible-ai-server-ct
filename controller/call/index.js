@@ -521,8 +521,8 @@ const trackShipment = async (req, res) => {
     shipmentNumber,
     originCity: origin,
     destinationCity: destination,
-    pickupDate,
-    delivaryDate: deliveryDate
+    pickupDate : new Date(pickupDate),
+    delivaryDate: new Date(deliveryDate)
   })
 
   await addJobToQueue({
