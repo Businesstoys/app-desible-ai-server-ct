@@ -7,7 +7,7 @@ const { AppError, AsyncWrapper } = require('@/utils')
 const protect = async (req, _, next) => {
   const key = process.env.USER_KEY_COOKIE
 
-  const authHeader = req.get('authorization') // ✅
+  const authHeader = req.get('authorization')
   const tokenFromHeader = authHeader?.startsWith('Bearer ')
     ? authHeader.slice(7)
     : authHeader
@@ -28,18 +28,26 @@ const protect = async (req, _, next) => {
   }
 }
 
-const webhookProtect = (req, _, next) => {
-  const secret = process.env.WEBHOOK_API_KEY
+const webhookProtect = (req, res, next) => {
+  try {
+    const secret = process.env.WEBHOOK_API_KEY
+    if (!secret) {
+      return res.status(401).json({ error: 'Unauthorized: missing server signature' })
+    }
 
-  if (!secret) {
-    return next(new AppError('Unauthorized', 401))
-  }
+    const apiKey = req.get('x-api-key')
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Unauthorized: missing API key' })
+    }
 
-  const apiKey = req.get('x-api-key')
-  if (!apiKey || apiKey !== secret) {
-    return next(new AppError('Unauthorized', 401))
+    if (apiKey !== secret) {
+      return res.status(401).json({ error: 'Unauthorized: invalid API key' })
+    }
+    next()
+  } catch (err) {
+    console.error('Webhook auth error:', err)
+    return res.status(500).json({ error: 'Internal Server Error during webhook auth' })
   }
-  next()
 }
 
 const twilioWebhookProtect = (authToken = process.env.TWILIO_AUTH_TOKEN) => {
@@ -81,11 +89,11 @@ const twilioWebhookProtect = (authToken = process.env.TWILIO_AUTH_TOKEN) => {
 }
 
 const asyncWrapped = AsyncWrapper({
-  protect,
-  webhookProtect
+  protect
 })
 
 module.exports = {
   ...asyncWrapped,
+  webhookProtect,
   twilioWebhookProtect
 }

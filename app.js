@@ -50,7 +50,7 @@ app.use(limiter)
 
 app.post(
   '/webhooks/shipment',
-  // require('@/middleware/auth').webhookProtect,
+  require('@/middleware/auth').webhookProtect,
   require('./controller/shipment').feed
 )
 
