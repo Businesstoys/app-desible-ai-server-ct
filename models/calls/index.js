@@ -28,7 +28,19 @@ const callSchema = new Schema(
     recordingUrl: { type: String, default: '', trim: true },
     duration: { type: Number, default: 0, min: 0 },
     outcome: { type: String, default: 'pending' },
-
+    outcomeDetails: {
+      lastUpdatedBy: {
+        userId: { type: ObjectId, ref: 'users' },
+        userName: { type: String }
+      },
+      lastUpdatedAt: { type: Date },
+      history: [{
+        userId: { type: ObjectId, ref: 'users' },
+        timestamp: { type: Date },
+        previousOutcome: { type: String },
+        newOutcome: { type: String },
+      }]
+    },
     status: {
       type: String,
       required: true,

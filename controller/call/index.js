@@ -7,6 +7,7 @@ const { AsyncWrapper, AppError, getDateRange, normalizePhone } = require('@/util
 const { CALL_STATUSES } = require('@/constant')
 const { handleCompletedCall, handleRetryCall } = require('./helper')
 const { addJobToQueue } = require('@/service/bullmq/call/producer')
+const { default: mongoose } = require('mongoose')
 
 const moment = require('moment-timezone')
 
@@ -128,11 +129,12 @@ const list = async ({ query }, res, _) => {
         summary: '$disposition.summary',
         subRemark: '$disposition.subRemark',
         outcome: 1,
+        outcomeDetails: 1,
         originCity: 1,
         destinationCity: 1,
         pickupDate: 1,
         delivaryDate: 1,
-        chain: 1
+        chain: 1,
       }
     },
     {
@@ -550,6 +552,54 @@ const trackShipment = async (req, res) => {
   })
 }
 
+const updateCallOutcome = async (req, res) => {
+  const { callId, outcome } = req.body;
+  const { _id: userId, name: username } = req.user;
+  if (!mongoose.isValidObjectId(callId)) {
+    return res.status(400).json({ status: 'error', message: 'Invalid callId' });
+  }
+  if (!mongoose.isValidObjectId(userId)) {
+    return res.status(400).json({ status: 'error', message: 'Invalid userId' });
+  }
+
+  try {
+
+    const now = new Date();
+    const currentCall = await db.findOneAndUpdate(Calls,
+      { _id: callId },
+      {
+        $set: {
+          outcome,
+          'outcomeDetails.lastUpdatedBy.userId': userId,
+          'outcomeDetails.lastUpdatedBy.userName': username,
+          'outcomeDetails.lastUpdatedAt': now
+        },
+        $push: {
+          'outcomeDetails.history': {
+            userId,
+            timestamp: now,
+            outcome,
+          },
+          lean: true
+        }
+      });
+
+    if (!currentCall) {
+      return res.status(404).json({ status: 'error', message: 'Call not found' });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Call outcome updated successfully',
+      data: currentCall
+    });
+  } catch (err) {
+    console.error('Update error:', err);
+    return res.status(500).json({ status: 'error', message: 'Failed to update outcome' });
+  }
+};
+
+
 const asyncWrapped = AsyncWrapper({
   exportDetails,
   remove,
@@ -560,5 +610,6 @@ const asyncWrapped = AsyncWrapper({
 
 module.exports = {
   ...asyncWrapped,
-  updateStatus
+  updateStatus,
+  updateCallOutcome
 }
