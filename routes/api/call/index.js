@@ -19,6 +19,8 @@ router.get('/list',
   validator.validate(callValidations.callList),
   call.list)
 
-router.post('/shipment', call.trackShipment)
+router.post('/shipment', call.trackShipment),
+
+router.post('/update-outcome', call.updateCallOutcome)
 
 module.exports = router
