@@ -78,7 +78,7 @@ const mapShipmentPayload = (payload) => ({
   carriers: (payload.Carriers || []).map(c => ({
     name: c.Name,
     dotNumber: c.CarrierId,
-    phone: c.Phone || '',
+    phone: normalizePhone(c.Phone) || '',
     email: c.Email || '',
     probillNumber: c.ProbillNumber || '',
     tierOverride: c.TierOverride,

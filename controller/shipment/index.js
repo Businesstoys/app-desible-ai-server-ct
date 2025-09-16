@@ -17,17 +17,7 @@ const feed = async ({ body }, res) => {
     const mapped = mapShipmentPayload(body)
     await createLog({ log: 'info', content: `Mapped shipment: ${JSON.stringify(mapped)}` })
 
-    const shipment = await db.findOneAndUpdate(
-      Shipments,
-      { number: mapped.number },
-      { $set: mapped },
-      {
-        upsert: true,
-        new: true,
-        runValidators: true,
-        setDefaultsOnInsert: true
-      }
-    )
+    const shipment = await db.create(Shipments, mapped)
 
     await createLog({
       log: 'success',

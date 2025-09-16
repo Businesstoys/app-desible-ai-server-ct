@@ -8,11 +8,18 @@
  * @param {string} p
  * @returns {string} normalized phone or empty string
  */
-module.exports = (p) => {
-  if (!p) return ''
-  const digits = (p.match(/\d+/g) || []).join('')
+module.exports = (raw, defaultCountryCode = '+1') => {
+  if (!raw) return ''
+
+  const digits = raw.replace(/\D/g, '')
   if (!digits) return ''
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  if (digits.length === 10) return `+1${digits}`
-  return `+${digits}`
+
+  if (digits?.length === 11 && digits?.startsWith('1')) {
+    return '+' + digits
+  }
+  if (digits?.length === 10) {
+    return defaultCountryCode + digits
+  }
+
+  return '+' + digits
 }
