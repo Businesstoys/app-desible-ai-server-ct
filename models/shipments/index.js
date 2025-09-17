@@ -3,9 +3,9 @@ const { Schema } = mongoose
 
 const shipmentSchema = new Schema(
   {
-    number: { type: String, required: true, unique: true },
+    number: { type: String, required: true },
     tripNumber: { type: String },
-    status: { type: String, enum: ['Planned', 'Billed', 'Delivered', 'Cancelled'] },
+    status: { type: String },
 
     rateType: { type: String },
     mode: { type: String },
@@ -17,9 +17,9 @@ const shipmentSchema = new Schema(
     deliveredAt: { type: Date },
     canceledAt: { type: Date },
 
-    cost: { type: Number, default: 0 },
-    revenue: { type: Number, default: 0 },
-    miles: { type: Number },
+    cost: { type: String, default: '' },
+    revenue: { type: String, default: '' },
+    miles: { type: String },
 
     origin: {
       company: { type: String },
@@ -74,44 +74,12 @@ const shipmentSchema = new Schema(
       }
     ],
 
-    referenceNumbers: [
-      {
-        code: { type: String },
-        description: { type: String },
-        value: { type: String }
-      }
-    ],
-
-    invoices: [
-      {
-        type: { type: Number }, // Type
-        invoiceNumber: { type: String }, // InvoiceNumber
-        originalInvoiceNumber: { type: String }, // OriginalInvoiceNumber
-        invoiceDate: { type: Date }, // InvoiceDate
-        totalAmount: { type: Number }, // TotalAmount
-        cost: { type: Number }, // Cost
-        isSupplementary: { type: Boolean }, // IsSupplementary
-        rowTimestampUtc: { type: Date } // RowTimestampUtc
-      }
-    ],
-
-    stopSummary: { // from Stops
-      total: { type: Number }, // Total
-      extra: { type: Number } // Extra
-    },
-
-    lastModifiedTimeUtc: { type: Date } // LastModifiedTimeUtc
+    lastModifiedTimeUtc: { type: Date }
   },
   {
     timestamps: { createdAt: 'createdOn', updatedAt: 'updatedOn' },
     versionKey: false
   }
 )
-
-shipmentSchema.index({ number: 1 }, { unique: true })
-shipmentSchema.index({ 'carriers.dotNumber': 1 })
-shipmentSchema.index({ plannerEmail: 1 })
-shipmentSchema.index({ status: 1, deliveredAt: 1 })
-shipmentSchema.index({ 'invoices.invoiceNumber': 1 })
 
 module.exports = mongoose.model('shipments', shipmentSchema)

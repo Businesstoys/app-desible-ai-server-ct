@@ -1,5 +1,3 @@
-const { AppError } = require('@/utils')
-
 const validate = (options = {}) => {
   return (req, res, next) => {
     const validationResults = []
@@ -33,7 +31,10 @@ const validate = (options = {}) => {
     // If any validation errors exist, create an AppError
     if (validationResults.length > 0) {
       const errorMessage = validationResults.flat().join('; ')
-      return next(new AppError(errorMessage, 400))
+      return res.status(400).json({
+        status: 'fail',
+        message: errorMessage
+      })
     }
 
     next()

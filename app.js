@@ -4,6 +4,8 @@ const cookieParser = require('cookie-parser')
 const rateLimit = require('express-rate-limit')
 const expressFileUpload = require('express-fileupload')
 const cors = require('cors')
+const { auth, validator } = require('@/middleware')
+const { shipment } = require('@/validations')
 
 const { AppError } = require('@/utils')
 const morgan = require('morgan')
@@ -50,7 +52,8 @@ app.use(limiter)
 
 app.post(
   '/webhooks/shipment',
-  require('@/middleware/auth').webhookProtect,
+  auth.webhookProtect,
+  validator.validate({ bodySchema: shipment.webhookBody }),
   require('./controller/shipment').feed
 )
 
